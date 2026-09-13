@@ -1,0 +1,37 @@
+{
+  "name": "@squillpad/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "test": "vitest run --reporter=minimal --silent=passed-only --hideSkippedTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@squillpad/core-model": "workspace:*",
+    "@squillpad/storage": "workspace:*",
+    "@squillpad/synchronization": "workspace:*",
+    "lib0": "^0.2.117",
+    "qrcode": "^1.5.4",
+    "ws": "^8.21.3",
+    "y-protocols": "^1.0.7",
+    "yjs": "13.6.27"
+  },
+  "devDependencies": {
+    "@types/node": "24.3.0",
+    "@types/qrcode": "^1.5.6",
+    "@types/ws": "^8.18.1",
+    "tsx": "4.20.5",
+    "typescript": "5.9.2",
+    "vitest": "4.1.11"
+  }
+}

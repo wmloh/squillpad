@@ -1,0 +1,12 @@
+node_modules/
+.pnpm-store/
+dist/
+test-results/
+.vite/
+*.tsbuildinfo
+*.log
+.env
+.env.*
+.DS_Store
+Thumbs.db
+.*-runtime/

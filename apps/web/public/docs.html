@@ -1,0 +1,1816 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#463177" />
+    <link rel="icon" href="./squillpad-tab-icon.png" type="image/png" />
+    <title>SquillPad — Guide</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #27252b;
+        --muted: #655e70;
+        --purple: #463177;
+        --purple-soft: #eee9f7;
+        --line: #ded8e5;
+        --paper: #ffffff;
+        --wash: #f7f4fa;
+        --note-ink: #4d4359;
+        font-family:
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        color: var(--ink);
+        background: var(--wash);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        line-height: 1.6;
+      }
+      a {
+        color: var(--purple);
+      }
+      .page {
+        width: min(100% - 2rem, 68rem);
+        margin: 0 auto;
+        padding: 1.25rem 0 4rem;
+      }
+      .section-nav {
+        margin: 0 0 2rem;
+        padding: 1rem;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+        background: var(--paper);
+        box-shadow: 0 8px 24px rgb(53 41 69 / 6%);
+      }
+      .section-nav__title {
+        margin: 0 0 0.55rem;
+        color: var(--purple);
+        font-size: 0.82rem;
+        font-weight: 750;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .section-nav ol {
+        display: grid;
+        gap: 0.15rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .section-nav li + li {
+        margin-top: 0;
+      }
+      .section-nav a {
+        position: relative;
+        display: block;
+        padding: 0.28rem 0.45rem 0.28rem 1.25rem;
+        border-radius: 0.35rem;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.35;
+        text-decoration: none;
+      }
+      .section-nav a::before {
+        position: absolute;
+        top: 50%;
+        left: 0.45rem;
+        width: 0.42rem;
+        height: 0.42rem;
+        border-radius: 50%;
+        background: var(--purple);
+        content: "";
+        opacity: 0;
+        transform: translateY(-50%) scale(0.65);
+        transition:
+          opacity 140ms ease,
+          transform 140ms ease;
+      }
+      .section-nav a.is-current {
+        color: var(--purple);
+        font-weight: 700;
+        background: var(--purple-soft);
+      }
+      .section-nav a.is-current::before {
+        opacity: 1;
+        transform: translateY(-50%) scale(1);
+      }
+      .section-nav a:hover {
+        color: var(--purple);
+        background: var(--purple-soft);
+      }
+      .section-nav a:focus-visible {
+        outline: 2px solid var(--purple);
+        outline-offset: 2px;
+      }
+      .card {
+        scroll-margin-top: 1rem;
+      }
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 3rem;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        color: var(--ink);
+        font-weight: 750;
+        text-decoration: none;
+      }
+      .brand-mark {
+        display: block;
+        width: 6rem;
+        height: 2rem;
+        object-fit: contain;
+        object-position: center;
+      }
+      .back-link {
+        padding: 0.35rem 0.7rem;
+        border: 1px solid #bcaed0;
+        border-radius: 0.4rem;
+        background: var(--paper);
+        text-decoration: none;
+      }
+      .hero {
+        max-width: 47rem;
+        margin-bottom: 2.5rem;
+      }
+      .eyebrow {
+        margin: 0 0 0.4rem;
+        color: var(--purple);
+        font-size: 0.78rem;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1,
+      h2,
+      h3 {
+        line-height: 1.2;
+      }
+      h1 {
+        max-width: 42rem;
+        margin: 0;
+        font-size: clamp(2.1rem, 6vw, 4rem);
+        letter-spacing: -0.04em;
+      }
+      h2 {
+        margin: 0 0 0.75rem;
+        font-size: clamp(1.45rem, 3vw, 2rem);
+      }
+      h3 {
+        margin: 0 0 0.45rem;
+        font-size: 1.08rem;
+      }
+      h4 {
+        margin: 0 0 0.4rem;
+        line-height: 1.2;
+        font-size: 0.98rem;
+      }
+      p {
+        margin-top: 0.75rem;
+      }
+      .hero p {
+        max-width: 40rem;
+        margin: 1rem 0 0;
+        color: var(--muted);
+        font-size: 1.12rem;
+      }
+      .card,
+      .platform-card {
+        border: 1px solid var(--line);
+        border-radius: 0.9rem;
+        background: var(--paper);
+        box-shadow: 0 10px 30px rgb(53 41 69 / 7%);
+      }
+      .card {
+        margin: 1.25rem 0;
+        padding: clamp(1.1rem, 3vw, 2rem);
+      }
+      .card > :first-child,
+      .platform-card > :first-child {
+        margin-top: 0;
+      }
+      .card > :last-child,
+      .platform-card > :last-child {
+        margin-bottom: 0;
+      }
+      .quick-start {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-top: 1.25rem;
+      }
+      .quick-start div {
+        padding: 1rem;
+        border-radius: 0.65rem;
+        background: var(--purple-soft);
+      }
+      .quick-start strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--purple);
+      }
+      .platforms {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin: 1.25rem 0 2rem;
+      }
+      .platform-card {
+        padding: 1.25rem;
+      }
+      .platform-card h3 {
+        color: var(--purple);
+      }
+      .section-lead {
+        max-width: 52rem;
+        color: var(--muted);
+      }
+      .role-grid,
+      .use-case-grid,
+      .workflow-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-top: 1.25rem;
+      }
+      .role-card,
+      .use-case,
+      .workflow {
+        padding: 1.25rem;
+        border: 1px solid var(--line);
+        border-radius: 0.75rem;
+        background: #fcfbfd;
+      }
+      .role-card h3,
+      .use-case h3,
+      .workflow h3 {
+        color: var(--purple);
+      }
+      .role-card ul,
+      .use-case ul,
+      .workflow ul {
+        padding-left: 1.35rem;
+      }
+      .mini-steps {
+        counter-reset: mini-step;
+        display: grid;
+        gap: 0.7rem;
+        padding: 0;
+        list-style: none;
+      }
+      .mini-steps li {
+        display: grid;
+        grid-template-columns: 1.6rem 1fr;
+        gap: 0.55rem;
+        align-items: start;
+      }
+      .mini-steps li::before {
+        counter-increment: mini-step;
+        content: counter(mini-step);
+        display: grid;
+        width: 1.6rem;
+        height: 1.6rem;
+        place-items: center;
+        border-radius: 50%;
+        color: white;
+        font-size: 0.8rem;
+        font-weight: 750;
+        background: var(--purple);
+      }
+      .mini-steps p {
+        margin: 0;
+      }
+      .platform-card ol,
+      .card ol,
+      .card ul {
+        padding-left: 1.35rem;
+      }
+      li + li {
+        margin-top: 0.5rem;
+      }
+      .note {
+        margin-top: 1rem;
+        padding: 0.8rem 1rem;
+        border-left: 4px solid #8b73b5;
+        border-radius: 0.25rem;
+        color: var(--note-ink);
+        background: #f7f2fc;
+      }
+      .command {
+        margin: 1rem 0 0;
+        padding: 1rem;
+        overflow-x: auto;
+        border-radius: 0.55rem;
+        color: #f8f5fc;
+        background: #30273a;
+        font-size: 0.9rem;
+      }
+      .steps {
+        counter-reset: step;
+        display: grid;
+        gap: 1rem;
+        padding: 0;
+        list-style: none;
+      }
+      .steps li {
+        display: grid;
+        grid-template-columns: 2rem 1fr;
+        gap: 0.75rem;
+        align-items: start;
+      }
+      .steps li > p,
+      .steps li > .command {
+        grid-column: 2 / -1;
+      }
+      .steps li::before {
+        counter-increment: step;
+        content: counter(step);
+        display: grid;
+        width: 2rem;
+        height: 2rem;
+        place-items: center;
+        border-radius: 50%;
+        color: white;
+        font-weight: 750;
+        background: var(--purple);
+      }
+      .steps p {
+        margin: 0;
+      }
+      .shortcut-table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .table-wrap {
+        overflow-x: auto;
+      }
+      .button-guide {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .shortcut-table th,
+      .shortcut-table td,
+      .button-guide th,
+      .button-guide td {
+        padding: 0.6rem 0.7rem;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+      .shortcut-table th,
+      .button-guide th {
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 650;
+      }
+      .button-guide th:first-child {
+        min-width: 13rem;
+      }
+      .button-guide td:first-child {
+        color: var(--purple);
+        font-weight: 700;
+      }
+      kbd {
+        padding: 0.12rem 0.35rem;
+        border: 1px solid #cfc4dc;
+        border-bottom-width: 2px;
+        border-radius: 0.25rem;
+        font-family: inherit;
+        font-size: 0.85em;
+        background: #f5f0fa;
+      }
+      .footer {
+        margin-top: 2rem;
+        color: var(--muted);
+        font-size: 0.9rem;
+        text-align: center;
+      }
+      .faq-list {
+        display: grid;
+        gap: 0.65rem;
+        margin-top: 1rem;
+      }
+      .faq-list details {
+        border: 1px solid var(--line);
+        border-radius: 0.6rem;
+        background: #fcfbfd;
+      }
+      .faq-list summary {
+        padding: 0.8rem 1rem;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .faq-list details > div {
+        padding: 0 1rem 1rem;
+      }
+      .faq-list details p:first-child,
+      .faq-list details ol:first-child,
+      .faq-list details ul:first-child,
+      .faq-list details .command:first-child {
+        margin-top: 0;
+      }
+      @media (max-width: 700px) {
+        .page {
+          width: min(100% - 1.1rem, 68rem);
+        }
+        .topbar {
+          margin-bottom: 2rem;
+        }
+        .quick-start,
+        .platforms,
+        .role-grid,
+        .use-case-grid,
+        .workflow-grid {
+          grid-template-columns: 1fr;
+        }
+        .shortcut-table th,
+        .shortcut-table td,
+        .button-guide th,
+        .button-guide td {
+          padding-inline: 0.35rem;
+        }
+      }
+      @media (min-width: 1500px) {
+        .section-nav {
+          position: fixed;
+          z-index: 10;
+          left: max(1rem, calc(50% - 34rem - 14rem));
+          width: 12rem;
+          max-height: calc(100vh - 2.5rem);
+          margin: 0;
+          overflow-y: auto;
+          background: color-mix(in srgb, var(--paper) 94%, var(--purple-soft));
+          backdrop-filter: blur(10px);
+          top: 50%;
+          transform: translateY(-50%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .section-nav a::before {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <nav class="topbar" aria-label="Page navigation">
+        <a class="brand" href="./">
+          <img class="brand-mark" src="./squillpad-light.png" alt="" aria-hidden="true" />
+          <span>SquillPad</span>
+        </a>
+        <a class="back-link" href="./">Back to the app</a>
+      </nav>
+
+      <nav class="section-nav" aria-label="Guide sections">
+        <p class="section-nav__title">On this page</p>
+        <ol>
+          <li><a href="#before-you-begin">The short version</a></li>
+          <li><a href="#host-client-picture">Host, client, and notebook</a></li>
+          <li><a href="#install-heading">Install and start SquillPad</a></li>
+          <li><a href="#first-notebook">Create your first notebook</a></li>
+          <li><a href="#multi-device">Host and client on different devices</a></li>
+          <li><a href="#use-cases">Where SquillPad can save real time</a></li>
+          <li><a href="#narrow-workflows">Small workflows with a big payoff</a></li>
+          <li><a href="#everyday-use">Everyday use</a></li>
+          <li><a href="#text-box-groups">Markdown text box groups</a></li>
+          <li><a href="#focus-and-pip">Fullscreen and Picture in picture</a></li>
+          <li><a href="#import-export">Bring things in and take things out</a></li>
+          <li><a href="#settings">Make the notebook fit you</a></li>
+          <li><a href="#shortcuts">Helpful keyboard shortcuts</a></li>
+          <li><a href="#github-snapshots">GitHub snapshots</a></li>
+          <li><a href="#troubleshooting">If something goes wrong</a></li>
+          <li><a href="#good-to-know">Good to know</a></li>
+        </ol>
+      </nav>
+
+      <header class="hero">
+        <p class="eyebrow">A friendly guide</p>
+        <h1>Keep words, sketches, and teamwork in one place.</h1>
+        <p>
+          SquillPad is a browser-based spatial notebook for Markdown notes, handwritten ink,
+          diagrams, images, and live collaboration. This guide gets you from a fresh checkout to
+          useful everyday workflows.
+        </p>
+      </header>
+
+      <section class="card" aria-labelledby="before-you-begin">
+        <h2 id="before-you-begin">The short version</h2>
+        <p>
+          One computer runs the SquillPad host and keeps the notebook folder. You open the notebook
+          in a browser on that computer or on another device. The host saves the work and, when
+          sharing is enabled, sends page updates to connected browsers.
+        </p>
+        <div class="quick-start">
+          <div>
+            <strong>1. Start</strong>Run the host on the computer that stores your notebook.
+          </div>
+          <div><strong>2. Connect</strong>Open the authorized link in a recent browser.</div>
+          <div><strong>3. Make</strong>Type, draw, organize, and share as you work.</div>
+        </div>
+        <p class="note">
+          <strong>Good news:</strong> a client device does not need the repository, Node.js, or a
+          separate SquillPad install. It only needs a browser and the host's connection link.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="host-client-picture">
+        <h2 id="host-client-picture">Host, client, and notebook: the simple picture</h2>
+        <p class="section-lead">
+          It helps to think of SquillPad as one notebook with two ways to look at it. The host is
+          the computer holding the notebook. A client is any browser window using that notebook.
+        </p>
+        <div class="role-grid">
+          <article class="role-card">
+            <h3>Host device = the home for the notebook</h3>
+            <ul>
+              <li>Runs the launcher and keeps the project folder on its local disk.</li>
+              <li>Owns canonical saves, sharing controls, profiles, and GitHub snapshots.</li>
+              <li>Needs Node.js, pnpm, and the SquillPad repository.</li>
+              <li>Must stay running for other devices to connect and collaborate live.</li>
+            </ul>
+          </article>
+          <article class="role-card">
+            <h3>Client device = a browser window</h3>
+            <ul>
+              <li>Opens the authorized URL from the host; no project folder is copied over.</li>
+              <li>Can be a laptop, tablet, phone, or another computer on the same network.</li>
+              <li>Can type, draw, and move around the notebook while sharing is enabled.</li>
+              <li>
+                Can keep local edits during a short network outage and sync them after reconnecting.
+              </li>
+            </ul>
+          </article>
+        </div>
+        <p class="note">
+          If the host is deliberately stopped, connected clients become read-only until the host is
+          started again. They can still browse, pan, zoom, and use the laser pointer.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="install-heading">
+        <h2 id="install-heading">Install and start SquillPad</h2>
+        <p>
+          SquillPad currently runs from this repository. It does not include a separate desktop
+          installer. From the repository root, you need:
+        </p>
+        <ul>
+          <li>Node.js 22.12 or newer. The included <code>.nvmrc</code> selects Node.js 24.20.0.</li>
+          <li>pnpm 11. The repository uses pnpm 11.25.0.</li>
+          <li>A recent Chromium, Firefox, or Safari/WebKit browser.</li>
+        </ul>
+        <ol class="steps">
+          <li>
+            <p><strong>Install the workspace dependencies once.</strong></p>
+            <pre class="command"><code>pnpm install</code></pre>
+          </li>
+          <li>
+            <p>
+              <strong>Create a notebook project and its launcher.</strong> This example creates a
+              project outside the checkout, uses port 4173, builds SquillPad, and writes a launcher
+              called <code>personal-notes.sh</code>.
+            </p>
+            <pre class="command"><code>./scripts/create-new-project.sh \
+  --name "Personal Notes" \
+  --directory "$PWD/../squillpad-notes" \
+  --port 4173</code></pre>
+          </li>
+          <li>
+            <p>
+              <strong>Run the launcher.</strong> Keep the terminal open while you use the notebook.
+              The launcher starts the host and opens its authorized URL in your default browser.
+            </p>
+            <pre class="command"><code>./launchers/personal-notes.sh</code></pre>
+          </li>
+        </ol>
+        <p class="note">
+          If the browser does not open automatically, use the authorized URL printed by the
+          launcher. The project folder must be empty or absent when you create a new project. The
+          folder stays on disk after you stop the host, so use the same launcher next time.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="first-notebook">
+        <h2 id="first-notebook">Create your first notebook</h2>
+        <ol class="steps">
+          <li>
+            <p>
+              <strong>Choose a home.</strong> The directory passed to the project script is your
+              notebook folder. Pick a place you can find again and back up.
+            </p>
+          </li>
+          <li>
+            <p>
+              <strong>Add structure only when you need it.</strong> Use
+              <strong>New section</strong> and <strong>New page</strong> in the navigation panels.
+              Rename a section or page by clicking its title, then drag items to reorder them.
+            </p>
+          </li>
+          <li>
+            <p>
+              <strong>Put different kinds of thinking together.</strong> Choose Text for Markdown,
+              Pen for handwriting, Shapes for lines and diagrams, or paste a supported image onto
+              the canvas.
+            </p>
+          </li>
+          <li>
+            <p>
+              <strong>Return whenever you like.</strong> Start the same launcher and reconnect in a
+              browser. Pages, drawings, Markdown, and images remain in the project folder.
+            </p>
+          </li>
+        </ol>
+        <p class="note">
+          For a backup or move, copy the whole notebook folder. A single page file is not enough to
+          preserve the complete notebook and its images.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="multi-device">
+        <h2 id="multi-device">Use a host and a client on different devices</h2>
+        <p class="section-lead">
+          The host and client are not two copies of the application. The host computer keeps the
+          notebook; the second device simply opens it in a browser. Only the host needs the
+          repository and the command line.
+        </p>
+        <ol class="steps">
+          <li>
+            <p>
+              <strong>Start on the host device.</strong> Run the project's launcher. LAN sharing is
+              enabled by default. Open <strong>Sharing</strong> in the top bar to see the current
+              state, the connection link, and the option to show a QR code.
+            </p>
+            <p>
+              If your computer has a firewall, allow the chosen port on your trusted local network
+              only. Do not forward the port to the public internet.
+            </p>
+          </li>
+          <li>
+            <p>
+              <strong>Give the client device the link.</strong> Put both devices on the same trusted
+              Wi-Fi or wired network. On the host, choose <strong>Show QR code</strong> and scan it,
+              or copy the complete authorized client URL.
+            </p>
+          </li>
+          <li>
+            <p>
+              <strong>Connect from the client device.</strong> If the connection screen appears,
+              paste the full authorized URL, including the access token, and choose
+              <strong>Connect</strong>. On the first visit, create a profile with a username and
+              password. On later visits, sign in with that profile; you normally do not need a new
+              access link.
+            </p>
+          </li>
+          <li>
+            <p>
+              <strong>Check the page status.</strong> Open the same page on both devices. When the
+              header says <strong>Synchronized</strong>, Markdown, ink, shapes, and page changes
+              appear on the other device without a reload. Presence avatars show the profiles that
+              are currently active in the project.
+            </p>
+          </li>
+          <li>
+            <p>
+              <strong>Choose the right collaboration view.</strong> Live editing is page-scoped, so
+              people can work on different pages at the same time. To keep an eye on another page
+              while editing your own, use the Picture in picture workflow below. On one page, agree
+              on different canvas regions when two people want to work side by side.
+            </p>
+          </li>
+        </ol>
+        <div class="role-grid">
+          <article class="role-card">
+            <h3>Sharing controls on the host</h3>
+            <ul>
+              <li><strong>LAN sharing:</strong> turn live remote editing on or off.</li>
+              <li>
+                <strong>Start with LAN sharing by default:</strong> choose what the next host start
+                should do.
+              </li>
+              <li>
+                <strong>Maximum clients:</strong> set the number of client slots, including the
+                host. The setting resets to its default when the host restarts.
+              </li>
+            </ul>
+          </article>
+          <article class="role-card">
+            <h3>When the connection changes</h3>
+            <ul>
+              <li>
+                <strong>Offline — editing locally:</strong> keep working; the browser will
+                synchronize again after reconnecting.
+              </li>
+              <li>
+                <strong>Sharing disabled:</strong> the host can still edit locally, while remote
+                clients become read-only after they reload.
+              </li>
+              <li>
+                <strong>Host stopped:</strong> restart the same launcher to bring live editing back.
+              </li>
+            </ul>
+          </article>
+        </div>
+        <p class="note">
+          LAN sharing uses unencrypted HTTP, including password login. Use a trusted network. Treat
+          the authorized URL like a powerful key: it can create, reset, or remove profiles. Stopping
+          the host revokes its links, but a browser that already connected may still have an offline
+          copy.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="use-cases">
+        <h2 id="use-cases">Where SquillPad can save real time</h2>
+        <p class="section-lead">
+          SquillPad is most useful when a task is too visual for a plain document but too fluid for
+          a rigid project tool. Keep the rough thinking and the finished explanation together, then
+          share or export the part that is ready.
+        </p>
+        <div class="use-case-grid">
+          <article class="use-case">
+            <h3>Meetings that end with a usable plan</h3>
+            <p>
+              Keep an agenda and action list in Markdown, sketch the decision or system map beside
+              it, and let a second person capture notes live. After the meeting, export the page as
+              Markdown instead of rewriting the notes from scratch.
+            </p>
+          </article>
+          <article class="use-case">
+            <h3>Project planning without losing the messy ideas</h3>
+            <p>
+              Use sections for <em>Inbox</em>, <em>This week</em>, and <em>Decisions</em>. Put rough
+              arrows and boxes next to the written plan, move groups of objects together, and
+              duplicate a useful page as the next planning session's starting point.
+            </p>
+          </article>
+          <article class="use-case">
+            <h3>Research and study with fewer tabs</h3>
+            <p>
+              Import Markdown, paste images, write a derivation by hand, and keep code or math next
+              to the explanation. Search all Markdown on the page, then use a live reference view
+              while writing a summary in another part of the notebook.
+            </p>
+          </article>
+          <article class="use-case">
+            <h3>Teaching, pairing, and design review</h3>
+            <p>
+              One person can explain with ink and a laser pointer while another types examples or
+              marks questions. Presence shows who is there, and a shared page keeps the review
+              focused on the same visual material.
+            </p>
+          </article>
+          <article class="use-case">
+            <h3>Visual briefs and handoffs</h3>
+            <p>
+              Combine a short brief, screenshots, wireframe shapes, and annotations on one canvas.
+              Group and copy the useful pieces, then export an editable SVG for a diagram workflow
+              or a PNG for a quick message or slide.
+            </p>
+          </article>
+          <article class="use-case">
+            <h3>A second screen for focused work</h3>
+            <p>
+              Keep a checklist, reference diagram, or worked example visible in Picture in picture
+              while you draft on a different page. Fullscreen gives the main canvas room; the small
+              view keeps context nearby without another application window.
+            </p>
+          </article>
+          <article class="use-case">
+            <h3>Cross-device capture</h3>
+            <p>
+              Leave the host on a laptop or home computer and use a tablet with a stylus as the
+              writing surface. Use the phone for a quick look, or continue locally during a short
+              Wi-Fi interruption and let the host catch up later.
+            </p>
+          </article>
+          <article class="use-case">
+            <h3>Long-running personal knowledge</h3>
+            <p>
+              Keep durable notes, diagrams, formulas, and decisions in human-readable project files.
+              Named Markdown styles, custom drawing palettes, page backgrounds, search, backups, and
+              optional GitHub snapshots make the notebook easier to return to months later.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="narrow-workflows">
+        <h2 id="narrow-workflows">Small workflows with a big payoff</h2>
+        <p class="section-lead">
+          These are deliberately narrow recipes. Try one exactly as written, then adapt it to the
+          way you think.
+        </p>
+        <div class="workflow-grid">
+          <article class="workflow">
+            <h3>Two collaborators, two pages, two live views</h3>
+            <ol class="mini-steps">
+              <li>
+                <p>
+                  Both people connect to the same host. Person A opens <strong>Plan</strong>; person
+                  B opens <strong>Research</strong>.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Each person briefly opens the other page, chooses
+                  <strong>Miscellaneous tools → Picture in picture</strong>, and draws a rectangle
+                  around the region to watch.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Each person returns to their own page. The small reference view stays visible and
+                  updates live while the main canvas remains available for editing.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Use the main canvas to edit. Picture-in-picture is read-only, so it is safe to
+                  keep a plan, source page, or review area in view. Move or resize the view when it
+                  gets in the way.
+                </p>
+              </li>
+            </ol>
+          </article>
+          <article class="workflow">
+            <h3>Two collaborators, one page, separate regions</h3>
+            <ol class="mini-steps">
+              <li>
+                <p>
+                  Agree on a simple boundary, such as notes on the left and a diagram on the right.
+                </p>
+              </li>
+              <li>
+                <p>
+                  One person uses <strong>Text</strong> for decisions and action items while the
+                  other uses <strong>Pen</strong>, <strong>Highlight</strong>, or
+                  <strong>Shapes</strong>.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Use the <strong>Laser</strong> tool to point at the exact item being discussed
+                  without adding permanent marks.
+                </p>
+              </li>
+              <li>
+                <p>
+                  When the page is ready, export the written part as Markdown or the visual part as
+                  SVG/PNG.
+                </p>
+              </li>
+            </ol>
+          </article>
+          <article class="workflow">
+            <h3>Tablet drafting with a stylus</h3>
+            <ol class="mini-steps">
+              <li>
+                <p>
+                  On the tablet, open <strong>Settings</strong> and turn on
+                  <strong>Touch input lock</strong>. This is useful when the tablet does not have
+                  reliable palm rejection.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Enter fullscreen. Finger touches on the canvas are now blocked so a resting palm
+                  cannot pan the page or leave an accidental mark. The stylus still works normally
+                  for writing, drawing, and selecting.
+                </p>
+              </li>
+              <li>
+                <p>
+                  If you need to move around, press and hold the patterned circle in the bottom
+                  right. While holding it, use a finger to pan or zoom; release it when you are done
+                  so touch is locked again.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Turn on the <strong>Radial toolbar</strong> toggle in the fullscreen canvas
+                  toolbar. With the stylus, press and hold anywhere on the canvas to open the quick
+                  tool ring at that spot, then choose Pen, Highlight, Erase, Text, Laser, or a color
+                  without reaching for the toolbar.
+                </p>
+              </li>
+            </ol>
+          </article>
+          <article class="workflow">
+            <h3>Meeting notes to handoff</h3>
+            <ol class="mini-steps">
+              <li>
+                <p>Make one page with an agenda, a free area for sketches, and an action list.</p>
+              </li>
+              <li>
+                <p>
+                  During the meeting, type decisions into Markdown and draw arrows or boxes around
+                  the important relationships.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Use Select to move the final action list near the top and duplicate the page if it
+                  becomes a reusable meeting template.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Open the <strong>Page</strong> menu and choose
+                  <strong>Export page Markdown</strong> when the written follow-up is ready.
+                </p>
+              </li>
+            </ol>
+          </article>
+          <article class="workflow">
+            <h3>Source material to explanation</h3>
+            <ol class="mini-steps">
+              <li>
+                <p>
+                  Choose <strong>Page → Import Markdown</strong> or paste a supported image into a
+                  research page.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Put handwritten calculations, highlights, and arrows beside the source instead of
+                  opening a separate annotation tool.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Use <strong>Search Markdown</strong> to jump between terms, then create a second
+                  page for the clean explanation.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Keep the source page in Picture in picture while you write the explanation, then
+                  export the finished page.
+                </p>
+              </li>
+            </ol>
+          </article>
+          <article class="workflow">
+            <h3>Draft a paper without managing a pile of boxes</h3>
+            <ol class="mini-steps">
+              <li>
+                <p>
+                  Create one Markdown box for the opening paragraph, edit it, and choose
+                  <strong>Create text box group</strong> in the editor.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Choose <strong>Add text box below</strong> to make the next part. Use separate
+                  boxes for an equation, a second paragraph, a short code example, or a heading.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Keep the architectural diagram as a Shapes drawing or pasted image beside the
+                  relevant text. The canvas stays open for visual material while the text group
+                  keeps the written sequence together.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Move the group by dragging its top-left group handle, not one of the text boxes.
+                  Copy it when you need a similar section, and export the page as Markdown when the
+                  prose is ready to share.
+                </p>
+              </li>
+            </ol>
+          </article>
+          <article class="workflow">
+            <h3>Work through a short network outage</h3>
+            <ol class="mini-steps">
+              <li>
+                <p>
+                  Watch the status in the header. <strong>Offline — editing locally</strong> means
+                  the browser is keeping your changes locally.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Continue writing or drawing. Avoid clearing the browser's site data while those
+                  edits are waiting.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Return to the trusted network or bring the host back, then wait for
+                  <strong>Synchronized</strong>.
+                </p>
+              </li>
+              <li>
+                <p>
+                  Check the page after reconnecting. The browser and host merge the offline work
+                  into the shared page.
+                </p>
+              </li>
+            </ol>
+          </article>
+          <article class="workflow">
+            <h3>Review a project on another host</h3>
+            <ol class="mini-steps">
+              <li>
+                <p>
+                  Use LAN sharing for live work nearby. Use
+                  <a href="#github-snapshots">GitHub snapshots</a> when two host computers need the
+                  same project at different times.
+                </p>
+              </li>
+              <li>
+                <p>
+                  On the first host, choose <strong>Sync now</strong> to publish a reviewed local
+                  snapshot.
+                </p>
+              </li>
+              <li>
+                <p>
+                  On the second host, choose <strong>Previous snapshots</strong> or
+                  <strong>Sync now</strong> and inspect the side-by-side pages before applying
+                  anything.
+                </p>
+              </li>
+              <li>
+                <p>
+                  If both hosts changed, choose <strong>Combine both changes</strong> or make one
+                  snapshot the complete winner after reviewing it.
+                </p>
+              </li>
+            </ol>
+          </article>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="everyday-use">
+        <h2 id="everyday-use">Everyday use</h2>
+        <ul>
+          <li>
+            <strong>Organize sections and pages:</strong> drag items to reorder them. Use a
+            three-dot menu or right-click to add below, copy and paste, duplicate, move, or delete.
+            A copied section or page includes its notes, drawings, and images. Deleting asks for
+            confirmation.
+          </li>
+          <li>
+            <strong>Customize navigation:</strong> use a section's action menu to choose its
+            bookmark color. Drag the divider beside either navigation panel to resize it, or focus
+            the divider and use the arrow keys. Use the panels toggle when you want more room for
+            the canvas.
+          </li>
+          <li>
+            <strong>Write Markdown:</strong> choose <strong>Text</strong>, click the canvas, and
+            type. Double-click or tap a Markdown box to edit its source. The editor supports
+            GitHub-flavored Markdown, links, tables, checklists, mathematics, and highlighted code.
+            Drag a box to move it, resize it from an edge or corner, and use Settings to change
+            rendered font size or box opacity. For a longer piece of writing, turn related boxes
+            into a <a href="#text-box-groups">Markdown text box group</a>.
+          </li>
+          <li>
+            <strong>Search your writing:</strong> use the <strong>Search Markdown</strong> field in
+            the toolbar. Press <kbd>Enter</kbd> for the next match and <kbd>Shift</kbd>+<kbd
+              >Enter</kbd
+            >
+            for the previous match. Press <kbd>Escape</kbd> to clear the search.
+          </li>
+          <li>
+            <strong>Draw:</strong> use <strong>Pen</strong> for ink and
+            <strong>Highlight</strong> for a translucent marker stroke. Custom palettes give each of
+            six slots its own color, thickness, and opacity. When Pen or Highlight is set to
+            <strong>Custom</strong>, press a color slot once to select it, then press the selected
+            slot again to edit the current slot's color, thickness, and opacity. Profile palette
+            settings can follow a signed-in profile across devices.
+          </li>
+          <li>
+            <strong>Make diagrams:</strong> choose <strong>Shapes</strong>, then Line, Arrow,
+            Rectangle, or Ellipse. Turn on Fill when a shape needs a colored interior. Select
+            objects to change their color, thickness, opacity, order, or grouping.
+          </li>
+          <li>
+            <strong>Use images:</strong> paste supported PNG, JPEG, GIF, or WebP images onto the
+            canvas. Images are stored with the page and travel with the project folder.
+          </li>
+          <li>
+            <strong>Select and move:</strong> tap an object to select it or drag across blank canvas
+            to lasso ink, shapes, images, and Markdown boxes. Use two fingers to pan or zoom on a
+            touch device. Use Group/Ungroup when several objects should move together.
+          </li>
+          <li>
+            <strong>Reuse work:</strong> copy and paste selected objects, or duplicate a selection
+            with <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>D</kbd>. Markdown source, grouped text boxes,
+            and pasted images stay together when copied inside SquillPad.
+          </li>
+          <li>
+            <strong>Erase:</strong> remove a whole stroke or touched shape, or choose Segment to
+            erase only part of an ink stroke.
+          </li>
+          <li>
+            <strong>Make room:</strong> open <strong>Miscellaneous tools</strong>, choose
+            <strong>Insert space</strong>, and drag a horizontal cut down to move crossing and lower
+            objects. Drag it up to remove extra space.
+          </li>
+          <li>
+            <strong>Point without leaving a mark:</strong> choose <strong>Laser</strong> and drag.
+            The fading pointer is visible to page collaborators and disappears on its own.
+          </li>
+          <li>
+            <strong>Move around:</strong> choose <strong>Hand</strong>, or hold
+            <kbd>Space</kbd> while dragging. On a phone or tablet, the toolbar scrolls horizontally
+            so the controls remain reachable.
+          </li>
+        </ul>
+        <p>
+          A finished pen stroke is left alone when you choose the next pen color. To change an old
+          stroke, choose <strong>Select</strong> first, click the stroke, and then choose its new
+          color.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="text-box-groups">
+        <h2 id="text-box-groups">Build a flowing draft with Markdown text box groups</h2>
+        <p class="section-lead">
+          A Markdown text box group is a stack of Markdown boxes that behaves like one piece of
+          writing on the canvas. It is made for content that is too rich for one small label but
+          still belongs together: a paragraph, an equation, another paragraph, and a diagram or
+          image nearby. SquillPad keeps the text boxes in order and opens space as the stack grows,
+          so you can concentrate on the draft instead of arranging every box by hand.
+        </p>
+        <h3>How to make one</h3>
+        <ol class="steps">
+          <li>
+            <p>
+              Choose <strong>Text</strong>, click the canvas, and write a non-empty Markdown box.
+              Double-click it or tap it to open the editor.
+            </p>
+          </li>
+          <li>
+            <p>
+              Choose <strong>Create text box group</strong>. The first box becomes the beginning of
+              the group.
+            </p>
+          </li>
+          <li>
+            <p>
+              In that editor, choose <strong>Add text box below</strong>. A fresh Markdown box is
+              placed below the current one and opens for editing. Repeat this for each paragraph,
+              equation, list, heading, or code block that belongs in the draft.
+            </p>
+          </li>
+          <li>
+            <p>
+              Choose <strong>Select</strong>, then drag the group's top-left handle—not one of the
+              text boxes—to move the whole written stack. Copying or duplicating the group keeps its
+              Markdown boxes together. If one box no longer belongs, edit it and choose
+              <strong>Detach</strong>; its content remains on the page as a separate Markdown box.
+            </p>
+          </li>
+        </ol>
+        <h3>A natural research-paper layout</h3>
+        <p>
+          Put the introduction paragraph in the first box, the displayed equation in the next, and
+          the explanation in a third. Add a fourth box for a result or transition. Then place an
+          architectural diagram beside the passage with <strong>Shapes</strong> or a pasted image.
+          The writing remains a clean, editable sequence while the diagram can sit exactly where the
+          reader needs it. When the page is ready, <strong>Export page Markdown</strong>
+          combines the Markdown boxes in reading order for a draft you can continue elsewhere.
+        </p>
+        <p class="note">
+          The group controls appear in the Markdown editor.
+          <strong>Create text box group</strong> starts a group;
+          <strong>Add text box below</strong> extends it; <strong>Detach</strong>
+          removes only the current box from the group. These actions do not flatten your Markdown
+          into one hard-to-edit block.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="focus-and-pip">
+        <h2 id="focus-and-pip">Fullscreen and Picture in picture</h2>
+        <p>
+          Use the fullscreen button at the end of the canvas toolbar when you want the page to fill
+          the screen. Press <kbd>Escape</kbd> to leave fullscreen. In fullscreen, turn on the
+          <strong>Radial toolbar</strong> toggle in the canvas toolbar for quick access to common
+          tools from the canvas itself.
+        </p>
+        <h3>Keep another page in view</h3>
+        <ol class="steps">
+          <li>
+            <p>
+              Open the page you want to watch. Choose <strong>Miscellaneous tools</strong>, then
+              <strong>Picture in picture</strong>.
+            </p>
+          </li>
+          <li>
+            <p>Drag a region around the part of the page you want to keep visible.</p>
+          </li>
+          <li>
+            <p>
+              Navigate to another page. The reference window stays on screen and updates from its
+              source page in real time.
+            </p>
+          </li>
+          <li>
+            <p>
+              Drag the window itself to move it. To resize it, hover over the window until the
+              resize indicator appears in the bottom-right corner, then drag that corner. The aspect
+              ratio stays locked.
+            </p>
+          </li>
+          <li>
+            <p>
+              To close the window, press and hold the PiP window. An <strong>X</strong> appears in
+              its top-right corner; press the <strong>X</strong> to close it. You can keep more than
+              one reference view open.
+            </p>
+          </li>
+        </ol>
+        <p class="note">
+          A Picture-in-picture window is a live, read-only view. Edit the source page from its main
+          canvas or close the reference before trying to change its content.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="import-export">
+        <h2 id="import-export">Bring things in and take things out</h2>
+        <p>
+          The <strong>Page</strong> menu in the canvas toolbar contains import and export actions.
+          Pick an export region before exporting an image or SVG:
+        </p>
+        <ul>
+          <li>
+            <strong>Import Markdown:</strong> choose a <code>.md</code> or text file and place its
+            contents on the page.
+          </li>
+          <li>
+            <strong>Export page Markdown:</strong> turn the page's Markdown boxes into one Markdown
+            document in reading order.
+          </li>
+          <li><strong>Content bounds:</strong> include all content on the page.</li>
+          <li>
+            <strong>Visible viewport:</strong> export the part currently inside the canvas window.
+          </li>
+          <li>
+            <strong>Selected objects:</strong> export only the objects selected with Select. This
+            option becomes available after you make a selection.
+          </li>
+          <li><strong>Export SVG:</strong> save the selected region as editable vector artwork.</li>
+          <li><strong>Export PNG:</strong> save the selected region as a shareable image.</li>
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="settings">
+        <h2 id="settings">Make the notebook fit you</h2>
+        <p>
+          Open <strong>Settings</strong> in the top bar for preferences that make long sessions and
+          different devices more comfortable.
+        </p>
+        <ul>
+          <li><strong>Page background:</strong> choose Blank, Ruled, or Grid.</li>
+          <li>
+            <strong>Readable text:</strong> adjust Markdown box opacity, rendered Markdown font
+            size, and the overall app text scale.
+          </li>
+          <li>
+            <strong>Touch and stylus work:</strong> choose whether pen input draws while touch
+            navigates. Turn on <strong>Touch input lock</strong> when you want fullscreen touch to
+            be blocked while stylus input continues to work; hold the patterned bottom-right button
+            when you need to pan or zoom with a finger.
+          </li>
+          <li>
+            <strong>Drawing comfort:</strong> set laser trace decay, arrow-key panning speed, and
+            the canvas toolbar height.
+          </li>
+          <li>
+            <strong>Autosave:</strong> when LAN sharing is disabled, a host can choose how often
+            pending changes are saved. You can also use the Save control in the header.
+          </li>
+          <li>
+            <strong>Profile settings:</strong> signed-in profiles can carry drawing palettes across
+            devices. Settings also offer <strong>Export profile</strong> and
+            <strong>Import profile</strong>; these transfer settings only, never passwords,
+            sessions, or access tokens.
+          </li>
+          <li>
+            <strong>Named Markdown styles:</strong> press <strong>Text</strong>; the
+            <strong>Edit styles</strong> button appears in the toolbar. Use it to create or edit a
+            style. To apply one, select a Markdown text box and set <strong>Color style</strong> at
+            the bottom left to the style you want.
+          </li>
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="shortcuts">
+        <h2 id="shortcuts">Helpful keyboard shortcuts</h2>
+        <p>
+          Shortcuts apply when the canvas has focus. Inside the Markdown editor, text-editing
+          shortcuts take over.
+        </p>
+        <div class="table-wrap">
+          <table class="shortcut-table">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><kbd>S</kbd></td>
+                <td>Select or lasso</td>
+              </tr>
+              <tr>
+                <td><kbd>M</kbd></td>
+                <td>Hand / pan</td>
+              </tr>
+              <tr>
+                <td><kbd>T</kbd></td>
+                <td>Text</td>
+              </tr>
+              <tr>
+                <td><kbd>P</kbd></td>
+                <td>Pen</td>
+              </tr>
+              <tr>
+                <td><kbd>H</kbd></td>
+                <td>Highlighter</td>
+              </tr>
+              <tr>
+                <td><kbd>E</kbd></td>
+                <td>Eraser</td>
+              </tr>
+              <tr>
+                <td><kbd>L</kbd></td>
+                <td>Laser pointer</td>
+              </tr>
+              <tr>
+                <td><kbd>1</kbd>–<kbd>6</kbd></td>
+                <td>Choose a palette color</td>
+              </tr>
+              <tr>
+                <td><kbd>Space</kbd> while dragging</td>
+                <td>Temporarily pan</td>
+              </tr>
+              <tr>
+                <td><kbd>Enter</kbd></td>
+                <td>Edit a selected Markdown box</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>F</kbd></td>
+                <td>Focus Markdown search</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>Z</kbd></td>
+                <td>Undo</td>
+              </tr>
+              <tr>
+                <td>
+                  <kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> or <kbd>Y</kbd>
+                </td>
+                <td>Redo</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>D</kbd></td>
+                <td>Duplicate selected objects</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>A</kbd></td>
+                <td>Select all canvas objects</td>
+              </tr>
+              <tr>
+                <td><kbd>Delete</kbd> or <kbd>Backspace</kbd></td>
+                <td>Delete selected objects</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>B</kbd></td>
+                <td>Bold selected Markdown text</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>I</kbd></td>
+                <td>Italicize selected Markdown text</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd></td>
+                <td>Strikethrough selected Markdown text</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>`</kbd></td>
+                <td>Format selected Markdown text as inline code</td>
+              </tr>
+              <tr>
+                <td><kbd>Ctrl</kbd>/<kbd>Cmd</kbd>+<kbd>K</kbd></td>
+                <td>Insert a Markdown link</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card" id="github-snapshots" aria-labelledby="github-heading">
+        <h2 id="github-heading">GitHub snapshots: keep separate hosts in step</h2>
+        <p>
+          GitHub snapshots are useful when the same SquillPad project needs to move between two host
+          computers—for example, a desktop at home and a laptop at work—or when you want a history
+          you can inspect before changing the current notebook. The host stores a canonical project
+          snapshot in a dedicated GitHub repository, then another host can fetch and review it.
+        </p>
+        <p>
+          This is separate from LAN collaboration. LAN sharing is the live connection for nearby
+          browsers using one host. GitHub is a snapshot shelf between hosts; it is not a live
+          collaboration server and is not needed for ordinary local editing.
+        </p>
+        <h3>Set it up</h3>
+        <ol class="steps">
+          <li>
+            <p>
+              <strong>Prepare the host.</strong> Git must be available on the host. Configure Git
+              author information and HTTPS/SSH credentials outside SquillPad. Create or choose a
+              dedicated GitHub repository that is empty or already contains a valid SquillPad
+              project at its root.
+            </p>
+          </li>
+          <li>
+            <p>
+              <strong>Open the host-only Sync control.</strong> Choose the circular-arrow
+              <strong>Sync</strong> button in the top bar. Connected clients do not see this
+              control. Enter the GitHub repository URL and, if useful, an optional first snapshot
+              note.
+            </p>
+          </li>
+          <li>
+            <p>
+              <strong>Choose Connect and inspect.</strong> SquillPad checks the repository and links
+              it to this host. An empty repository receives the first local snapshot. If the remote
+              already has a project, SquillPad opens a review when the two snapshots differ.
+            </p>
+          </li>
+          <li>
+            <p>
+              <strong>Repeat on another host when needed.</strong> Run SquillPad there with its own
+              local project folder, connect it to the same dedicated repository, and review the
+              GitHub snapshot before applying it. For a predictable handoff, let one host finish its
+              sync before the other host publishes new work.
+            </p>
+          </li>
+        </ol>
+        <p class="note">
+          SquillPad does not collect or persist GitHub tokens. The remote repository must not be
+          treated as a live notebook connection. Use LAN sharing when people need to edit together
+          in real time.
+        </p>
+        <h3>What happens when you choose Sync now</h3>
+        <p>
+          SquillPad first flushes pending notebook changes, may make a local snapshot, fetches the
+          configured GitHub branch, and compares the two sides. If the local side is newer, it can
+          publish it. If GitHub is newer, it opens a read-only review. If both sides changed, it
+          opens a conflict review instead of silently replacing one side.
+        </p>
+        <h3>What each button does</h3>
+        <p>
+          The screen may show different buttons depending on whether the repository is new, up to
+          date, ahead on one side, or in conflict. Here is the complete tour.
+        </p>
+        <div class="table-wrap">
+          <table class="button-guide">
+            <thead>
+              <tr>
+                <th>Button or control</th>
+                <th>What it does</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Sync</td>
+                <td>
+                  Opens the host's GitHub snapshot screen. It does not appear for connected clients.
+                </td>
+              </tr>
+              <tr>
+                <td>Connect and inspect</td>
+                <td>
+                  Checks the repository URL, links this host to it, and creates the first snapshot
+                  or compares the existing remote project.
+                </td>
+              </tr>
+              <tr>
+                <td>Sync now</td>
+                <td>
+                  Saves pending local project changes, fetches GitHub, and performs the next
+                  synchronization. It may publish local work, show that everything is current, or
+                  open a review.
+                </td>
+              </tr>
+              <tr>
+                <td>Refresh</td>
+                <td>
+                  Fetches the current GitHub branch and updates the “Changes at next sync” estimate.
+                  It does not publish local work or apply remote work.
+                </td>
+              </tr>
+              <tr>
+                <td>Previous snapshots</td>
+                <td>
+                  Opens the history screen so you can inspect older snapshots, compare them with
+                  each other or the current notebook, and restore one as a new snapshot.
+                </td>
+              </tr>
+              <tr>
+                <td>Older / Newer</td>
+                <td>
+                  Chooses which two snapshots to compare. SquillPad keeps the older one on the left
+                  and reorders reversed choices automatically.
+                </td>
+              </tr>
+              <tr>
+                <td>Compare snapshots</td>
+                <td>
+                  Shows the selected older and newer pages side by side. Turn it off to preview one
+                  side at a time.
+                </td>
+              </tr>
+              <tr>
+                <td>Link pan and zoom</td>
+                <td>
+                  Moves both comparison canvases together, making it easier to inspect the same area
+                  in each snapshot.
+                </td>
+              </tr>
+              <tr>
+                <td>Dim unchanged elements</td>
+                <td>Fades objects that are the same on both sides so changes stand out.</td>
+              </tr>
+              <tr>
+                <td>Restore older snapshot… / Restore newer snapshot…</td>
+                <td>
+                  Prepares the selected historical snapshot for restoration. After a confirmation,
+                  it becomes a new snapshot, so Git history is kept rather than erased.
+                </td>
+              </tr>
+              <tr>
+                <td>Use GitHub snapshot for local contents</td>
+                <td>
+                  Applies the reviewed GitHub project to this host. Use it when the remote version
+                  should become the host's current project.
+                </td>
+              </tr>
+              <tr>
+                <td>Use local snapshot for GitHub contents</td>
+                <td>
+                  Publishes the reviewed local project as the GitHub version. Use it only after
+                  checking what remote work it replaces.
+                </td>
+              </tr>
+              <tr>
+                <td>Combine both changes</td>
+                <td>
+                  Creates a temporary candidate containing non-conflicting local and GitHub changes.
+                  It lets you review the combined pages before publishing.
+                </td>
+              </tr>
+              <tr>
+                <td>Use local / Use GitHub</td>
+                <td>
+                  Inside a combined candidate, chooses one side for the selected visual conflict.
+                  Move through the affected pages until every conflict is resolved.
+                </td>
+              </tr>
+              <tr>
+                <td>Apply combined snapshot</td>
+                <td>
+                  Publishes the reviewed combined candidate to GitHub and reloads the host with the
+                  combined project.
+                </td>
+              </tr>
+              <tr>
+                <td>Cancel combined candidate</td>
+                <td>
+                  Throws away the temporary combined draft. It does not change the host or GitHub.
+                </td>
+              </tr>
+              <tr>
+                <td>Confirm snapshot change</td>
+                <td>
+                  Finishes an action that may remove current paths or replace a whole snapshot. Type
+                  the requested phrase only after reviewing the listed change.
+                </td>
+              </tr>
+              <tr>
+                <td>Close (×)</td>
+                <td>
+                  Closes the screen without choosing a snapshot. An open review can be reopened from
+                  Sync.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          The change bars labeled <strong>Publish local</strong> and <strong>Apply remote</strong>
+          estimate additions and removals. Treat whole-snapshot choices as consequential: review the
+          side-by-side pages first, especially when both hosts have been edited.
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="troubleshooting">
+        <h2 id="troubleshooting">If something goes wrong</h2>
+        <p class="section-lead">
+          Most problems are about which host is running, which project folder it opened, or whether
+          the connection link is complete. Start with the question that sounds closest to what you
+          see.
+        </p>
+        <div class="faq-list">
+          <details>
+            <summary>What should I do after the SquillPad repository changes?</summary>
+            <div>
+              <p>
+                Stop the old host with <kbd>Ctrl</kbd>+<kbd>C</kbd>. From the repository root,
+                install dependencies if the package files changed, rebuild the application, and
+                regenerate the launcher with the same project name, folder, and port. The old
+                launcher contains the recreate command in its comments.
+              </p>
+              <pre class="command"><code>pnpm install  # when dependencies or the lockfile changed
+pnpm build
+./scripts/create-new-project.sh \
+  --launcher-only --replace-launcher \
+  --name "Personal Notes" \
+  --directory "$PWD/../squillpad-notes" \
+  --port 4173
+./launchers/personal-notes.sh</code></pre>
+              <p>
+                This makes the launcher use the rebuilt browser and host files and keeps its
+                recorded project path and port current. If you moved the project, use the new
+                directory in the launcher command.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>The host will not start. What should I check?</summary>
+            <div>
+              <p>
+                Confirm that Node.js is at least 22.12 and pnpm 11 is available in the terminal. Run
+                <code>pnpm install</code> from the repository root if dependencies are missing, then
+                run <code>pnpm build</code>. Check that the launcher still points to a real project
+                folder containing <code>notebook.json</code>.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>The browser cannot connect to the host.</summary>
+            <div>
+              <p>
+                Make sure the launcher terminal is still open, sharing is enabled, and both devices
+                are on the same trusted network. Paste the complete authorized URL, including the
+                access token. A client device cannot use a host-only <code>localhost</code> URL; use
+                the network URL printed by the launcher or shown in Sharing. A firewall may also
+                need to allow the chosen port on the local network.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>The QR code or link does not work.</summary>
+            <div>
+              <p>
+                Open Sharing on the host and show a fresh QR code. Check that the client is on the
+                same network, then try copying the complete link into the connection screen instead.
+                Do not remove the part after the <code>#</code>; it carries the access token.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>I connected, but the client is read-only.</summary>
+            <div>
+              <p>
+                The host may have disabled LAN sharing, lost its connection, or been stopped. On the
+                host, turn LAN sharing back on and reload the client. If the host was stopped, run
+                the same launcher again. A stopped host leaves clients able to browse but not edit.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>My collaborator cannot see an edit.</summary>
+            <div>
+              <p>
+                Check that both people opened the same page and that the header says
+                <strong>Synchronized</strong>. Collaboration updates are page-scoped. If one person
+                is looking at a different page, use Picture in picture to keep that page visible and
+                live. A Picture-in-picture view is read-only, so edit from the main canvas.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>The status says “Offline — editing locally.”</summary>
+            <div>
+              <p>
+                Keep working if you are comfortable doing so. The browser is holding the edits
+                locally. Restore the network or restart the host, keep the notebook tab open, and
+                wait for <strong>Synchronized</strong>. Avoid clearing the browser's site data while
+                offline edits are waiting. If the host was deliberately stopped, the page is
+                read-only instead; restart the host first.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>Changes are waiting to be saved or the Save control shows an error.</summary>
+            <div>
+              <p>
+                Check that you are on the host and that its terminal is still running. If LAN
+                sharing is disabled, the host uses the autosave frequency in Settings and can also
+                save the current page with the header's <strong>Save</strong> control. Click it
+                again after checking the error message. Keep a copy of the project folder before
+                investigating unusual storage problems.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>I cannot find my notebook or a page looks empty.</summary>
+            <div>
+              <p>
+                Start the host with the same project folder used when the notebook was created.
+                Check the selected section and page; SquillPad stores pages separately. If you moved
+                the project, copy the entire folder and regenerate the launcher with
+                <code>--launcher-only --replace-launcher</code> and the new directory.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>GitHub synchronization stopped or shows a review.</summary>
+            <div>
+              <p>
+                Git must be installed on the host, Git author information must be set, and HTTPS or
+                SSH credentials must work outside SquillPad. Check that the remote is dedicated to
+                SquillPad and is empty or has a valid SquillPad project at its root. If both the
+                host and GitHub changed, use the review rather than starting a second sync.
+                SquillPad does not intentionally overwrite remote history when an operation stops;
+                correct the problem and try again.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>The snapshot review changed while I was looking at it.</summary>
+            <div>
+              <p>
+                Another sync may have changed the local or GitHub snapshot. Close or finish the old
+                review, choose <strong>Sync now</strong> or <strong>Refresh</strong>, and reopen the
+                review from the new comparison. Do not rely on an old review after either side has
+                moved on.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>I want to recover an older GitHub version.</summary>
+            <div>
+              <p>
+                Open <strong>Previous snapshots</strong>, choose the older and newer sides, inspect
+                the read-only preview, then choose <strong>Restore older snapshot…</strong> or
+                <strong>Restore newer snapshot…</strong>. Confirm only after checking the listed
+                paths. Restore creates a new snapshot, so the old history remains available.
+              </p>
+            </div>
+          </details>
+          <details>
+            <summary>Is it safe to use LAN sharing on public Wi-Fi?</summary>
+            <div>
+              <p>
+                No. LAN transport uses unencrypted HTTP and is intended for a trusted network. Do
+                not expose the host port to the public internet or an untrusted network. Treat the
+                authorized link as sensitive, and remember that a browser may retain an offline copy
+                even after an account is removed.
+              </p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="good-to-know">
+        <h2 id="good-to-know">Good to know</h2>
+        <ul>
+          <li>
+            A Node.js host process must remain running to serve the browser client and own canonical
+            project saves.
+          </li>
+          <li>There is no standalone browser-only or packaged desktop mode in this repository.</li>
+          <li>Stylus pressure is not captured or saved; strokes use fixed-width styles.</li>
+          <li>
+            SquillPad is primarily a personal project, so development and support may be
+            intermittent.
+          </li>
+        </ul>
+      </section>
+
+      <p class="footer"><a href="./">Return to SquillPad</a></p>
+    </main>
+    <script src="./docs-nav.js" defer></script>
+  </body>
+</html>

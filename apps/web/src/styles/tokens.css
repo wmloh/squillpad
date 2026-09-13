@@ -1,0 +1,168 @@
+:root {
+  color-scheme: light;
+
+  /* Theme roles */
+  --app-background: #f5f6fa;
+  --app-surface: #ffffff;
+  --app-surface-muted: #faf9fb;
+  --app-rail: #eef0f6;
+  --app-text: #27252b;
+  --app-muted: #665e70;
+  --app-border: #dedce3;
+  --app-control-border: #d4cedd;
+  --app-accent: #6550b9;
+  --app-accent-strong: #7052a5;
+  --app-accent-border: #8b73b5;
+  --app-accent-soft: #eee9f7;
+  --app-accent-foreground: #3f286b;
+  --app-accent-contrast: #ffffff;
+  --app-accent-glow: #3f2f80;
+  --app-toolbar-group: color-mix(in srgb, var(--app-surface) 95%, var(--app-text) 5%);
+  --app-toolbar-surface: color-mix(in srgb, var(--app-surface) 92%, transparent);
+  --app-control-track: #bdb6c9;
+  --app-danger: #8a1830;
+  --app-danger-background: #fbe9ed;
+  --app-topbar: #29223f;
+  --app-topbar-text: #ffffff;
+  --app-topbar-control-border: rgb(255 255 255 / 35%);
+  --app-topbar-control-surface: rgb(255 255 255 / 10%);
+  --app-topbar-control-hover: rgb(255 255 255 / 20%);
+  --app-topbar-control-hover-border: rgb(255 255 255 / 42%);
+  --app-topbar-group-border: rgb(255 255 255 / 18%);
+  --app-topbar-group-surface: rgb(255 255 255 / 7%);
+  --app-topbar-focus: #d6c7ff;
+  --app-overlay: rgb(12 9 20 / 62%);
+  --app-overlay-soft: rgb(12 9 20 / 24%);
+  --app-overlay-backdrop: blur(5px);
+  --app-onboarding-glow: #e5def6;
+  --app-presence-avatar-text: #303136;
+  --app-presence-avatar-background: #d8d9dd;
+  --canvas-background: #fbfafc;
+  --canvas-border: #d8d3df;
+  --canvas-grid: #d9d4df;
+  --canvas-rule: #ddd6ea;
+  --canvas-placeholder-dot: #ded9e6;
+
+  /* Shared glass and elevation roles */
+  --app-glass-tint: 226 220 235;
+  --app-glass-highlight: 255 255 255;
+  --app-glass-border: 75 53 99;
+  --app-glass-border-color: rgb(var(--app-glass-border) / 0.4);
+  --app-glass-surface: linear-gradient(
+    135deg,
+    rgb(var(--app-glass-highlight) / 0.58),
+    rgb(var(--app-glass-tint) / 0.84)
+  );
+  --app-glass-shadow:
+    0 18px 42px rgb(33 27 55 / 18%), inset 0 1px 0 rgb(var(--app-glass-highlight) / 0.5);
+  --app-glass-backdrop: blur(28px) saturate(1.25);
+  --app-frosted-surface: color-mix(in srgb, var(--app-surface) 88%, transparent);
+  --app-frosted-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--app-text) 12%, transparent),
+    0 16px 34px color-mix(in srgb, var(--app-topbar) 28%, transparent);
+  --app-frosted-backdrop: blur(14px);
+  --app-shadow: 0 8px 28px rgb(33 27 55 / 5%);
+  --app-shadow-card: 0 12px 36px rgb(33 27 55 / 10%);
+  --app-shadow-floating: 0 8px 24px rgb(33 27 55 / 16%);
+  --app-shadow-picture-in-picture:
+    var(--app-shadow-floating), 0 0 0.9rem color-mix(in srgb, var(--app-accent) 34%, transparent);
+  --app-shadow-notification: 0 12px 32px rgb(33 27 55 / 20%);
+  --app-shadow-dialog: 0 22px 70px rgb(33 27 55 / 35%);
+  --app-shadow-confirmation:
+    inset 0 1px 0 color-mix(in srgb, var(--app-text) 14%, transparent),
+    0 24px 64px color-mix(in srgb, var(--app-topbar) 36%, transparent);
+  --app-shadow-control: 0 2px 4px rgb(33 27 55 / 3%);
+  --app-shadow-active: 0 2px 5px rgb(65 44 106 / 15%);
+  --app-shadow-thumb: 0 1px 2px rgb(0 0 0 / 22%);
+  --app-accent-glow-shadow:
+    0 0 0.4rem color-mix(in srgb, var(--app-accent) 78%, var(--app-accent-glow)),
+    0 0 1rem color-mix(in srgb, var(--app-accent) 58%, transparent),
+    0 0 2rem color-mix(in srgb, var(--app-accent) 32%, transparent);
+  --app-accent-glow-shadow-hover:
+    0 0 0.45rem color-mix(in srgb, var(--app-accent) 88%, var(--app-accent-glow)),
+    0 0 1.15rem color-mix(in srgb, var(--app-accent) 72%, transparent),
+    0 0 2.4rem color-mix(in srgb, var(--app-accent) 42%, transparent);
+  --app-status-neutral: rgb(255 255 255 / 72%);
+  --app-status-success: #c6f6d5;
+  --app-status-warning: #fefcbf;
+  --app-status-error: #fed7d7;
+  --app-diff-add: #008000;
+  --app-diff-delete: #800000;
+
+  /* Shared typography roles. The scale is applied at each app-text use site. */
+  --app-text-scale: 1;
+  --app-font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  --app-font-size-body: 1rem;
+  --app-font-size-compact: 0.9rem;
+  --app-font-size-display: clamp(1.65rem, 4vw, 2.4rem);
+  --app-font-size-control: 0.8rem;
+  --app-font-size-small: 0.78rem;
+  --app-font-size-caption: 0.72rem;
+  --app-font-size-fine: 0.7rem;
+  --app-font-size-micro: 0.68rem;
+  --app-font-size-tiny: 0.66rem;
+  --app-font-size-mini: 0.62rem;
+  --app-font-size-icon: 1.25rem;
+  --app-font-size-emphasis: 1.35rem;
+  --app-font-size-subheading: 1.18rem;
+  --app-font-size-heading: 1.8rem;
+  --app-topbar-height: 3.25rem;
+
+  /* Shared spacing, radius, and control roles. */
+  --ui-space-1: 0.15rem;
+  --ui-space-2: 0.2rem;
+  --ui-space-3: 0.25rem;
+  --ui-space-4: 0.35rem;
+  --ui-space-5: 0.45rem;
+  --ui-space-6: 0.5rem;
+  --ui-space-7: 0.55rem;
+  --ui-space-8: 0.65rem;
+  --ui-space-9: 0.75rem;
+  --ui-space-10: 0.8rem;
+  --ui-space-11: 1rem;
+  --ui-space-12: 1.25rem;
+  --ui-space-13: 1.5rem;
+  --ui-space-14: 2rem;
+  --ui-space-sidebar-inline: 0.85rem;
+  --ui-space-workspace-block: 1.6rem;
+  --ui-space-workspace-inline: 1.75rem;
+  --ui-radius-small: 0.35rem;
+  --ui-radius-control: 0.4rem;
+  --ui-radius-action: 0.45rem;
+  --ui-radius-medium: 0.5rem;
+  --ui-radius-popover: 0.55rem;
+  --ui-radius-panel: 0.75rem;
+  --ui-radius-group: 0.65rem;
+  --ui-radius-card: 1rem;
+  --ui-radius-pill: 999px;
+  --ui-control-height: 1.9rem;
+  --ui-control-height-inline: 1.8rem;
+  --ui-control-height-tall: 2rem;
+  --ui-control-height-menu: 2.05rem;
+  --ui-control-height-large: 2.75rem;
+  --ui-control-height-action: 2.2rem;
+  --ui-control-padding-block: 0.15rem;
+  --ui-control-padding-inline: 0.45rem;
+  --ui-control-radius: var(--ui-radius-control);
+  --ui-control-border-width: 1px;
+
+  /* Markdown-specific glass roles remain independent from app chrome. */
+  --markdown-glass-tint: 226 220 235;
+  --markdown-glass-highlight: 255 255 255;
+  --markdown-glass-border: 75 53 99;
+  --markdown-editor-tint: 236 231 243;
+  --markdown-editor-highlight: 255 255 255;
+  --markdown-editor-border: 74 52 99;
+  --markdown-editor-input: 250 248 252;
+  --markdown-editor-markup-color: #404740;
+  --markdown-editor-font-size: 1rem;
+  --canvas-origin: #9e91ad;
+  --ui-motion-snappy: cubic-bezier(0.22, 1, 0.36, 1);
+  --ui-motion-exit: cubic-bezier(0.4, 0, 1, 1);
+  font-family: var(--app-font-family);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  color: var(--app-text);
+  background: var(--app-background);
+}

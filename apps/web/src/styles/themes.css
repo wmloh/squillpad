@@ -1,0 +1,331 @@
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --app-shadow: 0 8px 28px rgb(0 0 0 / 42%);
+  --app-shadow-card: 0 12px 36px rgb(0 0 0 / 28%);
+  --app-shadow-floating: 0 8px 24px rgb(0 0 0 / 18%);
+  --app-shadow-notification: 0 12px 32px rgb(0 0 0 / 28%);
+  --app-shadow-dialog: 0 22px 70px rgb(0 0 0 / 35%);
+  --app-shadow-control: 0 2px 4px rgb(0 0 0 / 18%);
+  --app-shadow-active: 0 2px 5px rgb(10 20 29 / 28%);
+  --app-background: #151616;
+  --app-surface: #222322;
+  --app-surface-muted: #1b1c1b;
+  --app-rail: #101111;
+  --app-text: #eceeea;
+  --app-muted: #a4a7a1;
+  --app-border: #3a3d39;
+  --app-control-border: #555a54;
+  --app-accent: #9fc5b1;
+  --app-accent-soft: #28352f;
+  --app-toolbar-group: color-mix(in srgb, var(--app-surface) 96%, var(--app-text) 4%);
+  --app-accent-strong: #80ae96;
+  --app-accent-border: #80ae96;
+  --app-accent-foreground: #e9f4ec;
+  --app-accent-contrast: #15221a;
+  --app-topbar: #0c0d0c;
+  --app-topbar-text: #eceeea;
+  --app-topbar-focus: var(--app-accent-strong);
+  --app-toolbar-surface: rgb(31 32 31 / 94%);
+  --app-control-track: #59605a;
+  --app-code-background: #282b29;
+  --app-glass-tint: 61 70 65;
+  --app-glass-highlight: 151 185 164;
+  --app-glass-border: 174 213 187;
+  --app-glass-shadow:
+    0 18px 42px rgb(0 0 0 / 28%), inset 0 1px 0 rgb(var(--app-glass-highlight) / 0.5);
+  --app-onboarding-glow: #28352f;
+  --markdown-glass-tint: 61 70 65;
+  --markdown-glass-highlight: 151 185 164;
+  --markdown-glass-border: 174 213 187;
+  --markdown-editor-tint: 53 62 57;
+  --markdown-editor-highlight: 155 194 170;
+  --markdown-editor-border: 174 218 190;
+  --markdown-editor-input: 42 49 45;
+  --markdown-editor-markup-color: var(--app-text);
+  --app-danger: #ffb8c1;
+  --app-danger-background: #4a2a34;
+  --canvas-background: #080909;
+  --canvas-border: #3a3d39;
+  --canvas-grid: #303330;
+  --canvas-rule: #3a3d3a;
+  --canvas-placeholder-dot: #484b48;
+  --canvas-origin: #777a76;
+}
+
+[data-theme="dark"] .notebook-app,
+[data-theme="dark"] .connection-screen {
+  color: var(--app-text);
+  background: var(--app-background);
+}
+[data-theme="dark"] .topbar {
+  background: var(--app-topbar);
+}
+[data-theme="dark"] .section-rail {
+  background: var(--app-rail);
+}
+[data-theme="dark"] .page-sidebar,
+[data-theme="dark"] .page-workspace,
+[data-theme="dark"] .connection-card {
+  background: var(--app-surface-muted);
+}
+[data-theme="dark"] .section-rail,
+[data-theme="dark"] .page-sidebar {
+  border-color: var(--app-border);
+}
+[data-theme="dark"] .section-list li.is-active,
+[data-theme="dark"] .page-list li.is-active {
+  background: var(--app-accent-soft);
+}
+[data-theme="dark"] .rail-heading,
+[data-theme="dark"] .empty-message,
+[data-theme="dark"] .loading-screen,
+[data-theme="dark"] .touch-policy-toggle,
+[data-theme="dark"] .canvas-status,
+[data-theme="dark"] .canvas-toolbar output,
+[data-theme="dark"] .connection-intro {
+  color: var(--app-muted);
+}
+[data-theme="dark"] .new-navigation-button,
+[data-theme="dark"] .page-heading select,
+[data-theme="dark"] .page-heading .canvas-export-menu > summary,
+[data-theme="dark"] .section-settings > summary,
+[data-theme="dark"] .section-rail__footer .theme-toggle,
+[data-theme="dark"] .section-rail__footer .navigation-toggle,
+[data-theme="dark"] .navigation-floating-toggle,
+[data-theme="dark"] .settings-number-control input,
+[data-theme="dark"] .settings-select-control select,
+[data-theme="dark"] .canvas-toolbar,
+[data-theme="dark"] .canvas-export-menu__content,
+[data-theme="dark"] .canvas-tool-menu__content,
+[data-theme="dark"] .page-markdown-search button,
+[data-theme="dark"] .tool-style select,
+[data-theme="dark"] .tool-group select,
+[data-theme="dark"] .markdown-editor-heading button,
+[data-theme="dark"] .connection-card button {
+  border-color: var(--app-control-border);
+  color: var(--app-text);
+  background: var(--app-surface);
+}
+[data-theme="dark"] .canvas-toolbar button:not(:disabled):hover,
+[data-theme="dark"] .canvas-toolbar button.is-active,
+[data-theme="dark"] .canvas-export-menu > summary:hover,
+[data-theme="dark"] .canvas-export-menu[open] > summary,
+[data-theme="dark"] .canvas-tool-menu > summary:hover,
+[data-theme="dark"] .canvas-tool-menu[open] > summary,
+[data-theme="dark"] .canvas-tool-menu > summary.is-active,
+[data-theme="dark"] .markdown-style-menu > summary:hover,
+[data-theme="dark"] .markdown-style-menu[open] > summary,
+[data-theme="dark"] .page-markdown-search button:not(:disabled):hover,
+[data-theme="dark"] .connection-card button:hover,
+[data-theme="dark"] .connection-card button:focus-visible {
+  border-color: var(--app-accent-strong);
+  color: var(--app-accent-foreground);
+  background: var(--app-accent-soft);
+}
+[data-theme="dark"] .section-settings > summary:hover,
+[data-theme="dark"] .section-settings > summary:focus-visible,
+[data-theme="dark"] .section-settings[open] > summary,
+[data-theme="dark"] .section-rail__footer .theme-toggle:hover,
+[data-theme="dark"] .section-rail__footer .theme-toggle:focus-visible,
+[data-theme="dark"] .section-rail__footer .navigation-toggle:hover,
+[data-theme="dark"] .section-rail__footer .navigation-toggle:focus-visible,
+[data-theme="dark"] .navigation-floating-toggle:hover,
+[data-theme="dark"] .navigation-floating-toggle:focus-visible {
+  border-color: var(--app-accent-strong);
+  color: var(--app-accent-foreground);
+  background: var(--app-accent-soft);
+}
+[data-theme="dark"] .new-navigation-button {
+  color: var(--app-accent);
+}
+[data-theme="dark"] .editable-title:hover,
+[data-theme="dark"] .editable-title:focus,
+[data-theme="dark"] .page-heading select,
+[data-theme="dark"] .connection-card input,
+[data-theme="dark"] .tool-style input[type="color"],
+[data-theme="dark"] .markdown-search input[type="search"] {
+  border-color: var(--app-control-border);
+  background: var(--app-surface);
+}
+[data-theme="dark"] .canvas-export-menu__content select {
+  border-color: transparent;
+  color: var(--app-muted);
+  background: transparent;
+}
+[data-theme="dark"] .spatial-canvas-frame {
+  border-color: var(--app-border);
+  background: var(--canvas-background);
+}
+[data-theme="dark"] .canvas-toolbar {
+  border-color: var(--app-border);
+  background: var(--app-toolbar-surface);
+}
+[data-theme="dark"] .spatial-canvas {
+  background-color: var(--canvas-background);
+}
+[data-theme="dark"] .markdown-block {
+  color: var(--app-text);
+}
+[data-theme="dark"] .markdown-content blockquote {
+  border-color: var(--app-accent-strong);
+  color: var(--app-muted);
+}
+[data-theme="dark"] .markdown-content mark.markdown-highlight {
+  background: #75651f;
+  box-shadow: inset 0 -0.12em rgb(255 225 91 / 30%);
+}
+[data-theme="dark"] .markdown-content .footnotes {
+  border-color: var(--app-border);
+}
+[data-theme="dark"] .markdown-content pre,
+[data-theme="dark"] .markdown-content code {
+  background: var(--markdown-color-codeBackground, var(--app-code-background));
+}
+[data-theme="dark"] .markdown-content .hljs-comment,
+[data-theme="dark"] .markdown-content .hljs-quote {
+  color: #8b949e;
+}
+[data-theme="dark"] .markdown-content .hljs-keyword,
+[data-theme="dark"] .markdown-content .hljs-selector-tag,
+[data-theme="dark"] .markdown-content .hljs-subst {
+  color: #ff7b72;
+}
+[data-theme="dark"] .markdown-content .hljs-number,
+[data-theme="dark"] .markdown-content .hljs-literal,
+[data-theme="dark"] .markdown-content .hljs-variable,
+[data-theme="dark"] .markdown-content .hljs-template-variable,
+[data-theme="dark"] .markdown-content .hljs-tag .hljs-attr {
+  color: #79c0ff;
+}
+[data-theme="dark"] .markdown-content .hljs-string,
+[data-theme="dark"] .markdown-content .hljs-doctag {
+  color: #a5d6ff;
+}
+[data-theme="dark"] .markdown-content .hljs-title,
+[data-theme="dark"] .markdown-content .hljs-section,
+[data-theme="dark"] .markdown-content .hljs-selector-id {
+  color: #d2a8ff;
+}
+[data-theme="dark"] .markdown-content .hljs-type,
+[data-theme="dark"] .markdown-content .hljs-class .hljs-title {
+  color: #ffa657;
+}
+[data-theme="dark"] .markdown-content .hljs-attr,
+[data-theme="dark"] .markdown-content .hljs-attribute,
+[data-theme="dark"] .markdown-content .hljs-name,
+[data-theme="dark"] .markdown-content .hljs-built_in,
+[data-theme="dark"] .markdown-content .hljs-builtin-name {
+  color: #7ee787;
+}
+[data-theme="dark"] .markdown-content .hljs-meta {
+  color: #ff7b72;
+}
+[data-theme="dark"] .markdown-content .hljs-addition {
+  color: #aff5b4;
+  background: #033a16;
+}
+[data-theme="dark"] .markdown-content .hljs-deletion {
+  color: #ffdcd7;
+  background: #67060c;
+}
+[data-theme="dark"] .markdown-content th,
+[data-theme="dark"] .markdown-content td,
+[data-theme="dark"] .markdown-source-editor {
+  border-color: var(--app-border);
+}
+[data-theme="dark"] .markdown-content a {
+  color: #afd0bb;
+}
+[data-theme="dark"] .canvas-markdown-drag-handle {
+  border-color: var(--app-accent-strong);
+  color: var(--app-accent-foreground);
+  background: var(--app-code-background);
+}
+[data-theme="dark"] .connection-card {
+  border-color: var(--app-border);
+  box-shadow: var(--app-shadow-card);
+}
+[data-theme="dark"] .connection-card form button {
+  border-color: var(--app-accent);
+  color: var(--app-accent-contrast);
+  background: var(--app-accent);
+}
+[data-theme="dark"] .connection-card form button:hover,
+[data-theme="dark"] .connection-card form button:focus-visible {
+  border-color: var(--app-accent-strong);
+  color: var(--app-accent-contrast);
+  background: var(--app-accent-strong);
+}
+
+/* Named Markdown styles intentionally override both light and dark theme colors. */
+.markdown-block.has-color-style .markdown-content a {
+  color: var(--markdown-color-link);
+}
+.markdown-block.has-color-style .markdown-content blockquote {
+  color: var(--markdown-color-blockquote);
+}
+.markdown-block.has-color-style .markdown-content mark.markdown-highlight {
+  color: var(--markdown-color-text);
+  background: var(--markdown-color-highlightBackground);
+}
+.markdown-block.has-color-style .markdown-content pre,
+.markdown-block.has-color-style .markdown-content pre code,
+.markdown-block.has-color-style .markdown-content pre code.hljs {
+  color: var(--markdown-color-codeBlock) !important;
+}
+[data-theme="dark"] .canvas-selection-overlay {
+  box-shadow: 0 0 0 3px var(--canvas-background);
+}
+[data-theme="dark"] .canvas-placeholder {
+  border-color: var(--app-border);
+  color: var(--app-muted);
+  background-image: radial-gradient(var(--canvas-grid) 0.7px, transparent 0.7px);
+}
+[data-theme="dark"] .error-banner,
+[data-theme="dark"] .connection-error {
+  color: var(--app-danger);
+  background: var(--app-danger-background);
+}
+[data-theme="dark"] .canvas-toolbar button.color-swatch[aria-pressed="true"] {
+  outline-color: var(--app-accent-strong);
+}
+[data-theme="dark"] .spatial-canvas:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--app-accent-strong);
+}
+[data-theme="dark"] .canvas-element.is-hovered,
+[data-theme="dark"] .canvas-element.is-selected {
+  outline-color: var(--app-accent-strong);
+}
+[data-theme="dark"] .canvas-element.is-selected {
+  outline-color: var(--app-accent);
+}
+[data-theme="dark"] .markdown-block.is-editing {
+  box-shadow:
+    0 0 0 3px rgb(var(--markdown-editor-border) / calc(var(--markdown-box-opacity) * 0.24)),
+    0 10px 24px rgb(0 0 0 / calc(var(--markdown-box-opacity) * 0.3));
+}
+[data-theme="dark"] .markdown-content .katex-error {
+  color: var(--app-danger);
+}
+[data-theme="dark"] .markdown-source-editor .cm-focused {
+  outline-color: color-mix(in srgb, var(--app-accent-strong) 22%, transparent);
+}
+[data-theme="dark"] .canvas-resize-handle {
+  border-color: var(--canvas-background);
+  background: var(--app-accent);
+}
+[data-theme="dark"] .canvas-origin::before,
+[data-theme="dark"] .canvas-origin::after {
+  background: var(--canvas-origin);
+}
+[data-theme="dark"] .canvas-selection-overlay {
+  outline-color: var(--app-accent);
+}
+[data-theme="dark"] .topbar :focus-visible {
+  outline-color: var(--app-accent-strong);
+}
+
+[data-theme="dark"] .range-control input[type="range"],
+[data-theme="dark"] .page-markdown-box-control input[type="range"] {
+  accent-color: var(--app-accent-strong);
+}

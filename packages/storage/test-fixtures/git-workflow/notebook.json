@@ -1,0 +1,10 @@
+{
+  "projectId": "018f1f2e-7c8a-7b1c-8d2e-3f4a5b6c7d8e",
+  "schemaVersion": 2,
+  "sectionIds": ["123e4567-e89b-42d3-a456-426614174000"],
+  "settings": {
+    "defaultZoom": 1,
+    "metadata": {}
+  },
+  "title": "Git workflow fixture"
+}

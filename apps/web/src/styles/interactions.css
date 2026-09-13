@@ -1,0 +1,117 @@
+/* Shared interaction states keep navigation and controls consistent in both themes. */
+button,
+select,
+summary,
+a,
+.editable-title {
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+:where(button, select, input, textarea, summary, a):focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 3px;
+}
+.topbar :focus-visible {
+  outline-color: var(--app-topbar-focus);
+}
+.section-list li:hover,
+.page-list li:hover {
+  background: var(--app-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-accent) 24%, transparent);
+}
+.section-list li.is-active .section-select,
+.page-list li.is-active .page-select {
+  font-weight: 650;
+}
+.new-navigation-button:not(:disabled):hover {
+  color: var(--app-accent);
+  background: var(--app-accent-soft);
+}
+.page-heading {
+  flex-wrap: wrap;
+}
+.page-heading > .editable-title {
+  flex: 1 1 12rem;
+}
+.page-heading label {
+  min-width: 0;
+}
+.canvas-toolbar button.is-active,
+[data-theme="dark"] .canvas-toolbar button.is-active {
+  border-color: var(--app-accent);
+  color: var(--app-accent-contrast);
+  background: var(--app-accent);
+  box-shadow: var(--app-shadow-active);
+}
+.canvas-toolbar .tool-group:first-child,
+.canvas-toolbar .canvas-action-group {
+  padding: var(--ui-space-1) var(--ui-space-1);
+  border: 0;
+  border-radius: var(--ui-radius-group);
+  background: var(--app-toolbar-group);
+}
+.touch-policy-toggle input {
+  accent-color: var(--app-accent);
+}
+.save-status::before {
+  content: "";
+  width: 0.35rem;
+  height: 0.35rem;
+  flex: 0 0 0.35rem;
+  border-radius: 50%;
+  background: var(--app-status-neutral);
+}
+.save-status.save-saved::before,
+.save-status.sync-synchronized::before {
+  background: var(--app-status-success);
+}
+.save-status.save-saving::before {
+  background: var(--app-status-warning);
+}
+.save-status.save-error::before,
+.save-status.sync-offline::before,
+.save-status.sync-error::before {
+  background: var(--app-status-error);
+}
+.save-status.sync-sharing-disabled::before {
+  background: var(--app-danger);
+}
+.empty-message {
+  padding: var(--ui-space-11) var(--ui-space-6);
+  font-size: calc(var(--app-font-size-compact) * var(--app-text-scale));
+  line-height: 1.7;
+}
+.connection-card input {
+  color: var(--app-text);
+  background: var(--app-surface);
+}
+.connection-card form {
+  gap: var(--ui-space-9);
+}
+.connection-card form button {
+  margin-top: var(--ui-space-3);
+  font-weight: 650;
+}
+[data-theme="dark"] .connection-guide-link,
+[data-theme="dark"] .markdown-editor-heading,
+[data-theme="dark"] .markdown-empty {
+  color: var(--app-muted);
+}
+[data-theme="dark"] .connection-guide-link a {
+  color: var(--app-accent);
+}
+.editable-title:focus-visible {
+  outline: 2px solid var(--app-accent);
+  outline-offset: 2px;
+}
+.storage-diagnostics > div button {
+  color: var(--app-accent);
+  border-color: var(--app-control-border);
+  background: var(--app-surface);
+}
+[data-theme="dark"] .canvas-toolbar button.is-active {
+  color: var(--app-accent-contrast);
+  box-shadow: var(--app-shadow-active);
+}

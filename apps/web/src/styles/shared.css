@@ -1,0 +1,158 @@
+.error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-9);
+  margin-bottom: var(--ui-space-11);
+  padding: var(--ui-space-10);
+  border-radius: var(--ui-radius-control);
+  color: var(--app-danger);
+  background: var(--app-danger-background);
+}
+.notification-area {
+  padding: var(--ui-space-8) 1.1rem 0;
+}
+.notification-area .error-banner {
+  margin-bottom: 0;
+}
+.error-banner button {
+  flex: none;
+  padding: var(--ui-space-3) var(--ui-space-6);
+  border: 1px solid currentColor;
+  border-radius: var(--ui-radius-small);
+  color: inherit;
+  background: transparent;
+}
+.error-banner button:hover,
+.error-banner button:focus-visible {
+  background: color-mix(in srgb, var(--app-danger) 10%, transparent);
+}
+.connection-screen {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: var(--ui-space-12);
+  color: var(--app-text);
+  background:
+    radial-gradient(ellipse at 20% 10%, var(--app-onboarding-glow), transparent 55%),
+    var(--app-background);
+}
+.connection-card {
+  width: min(100%, 38rem);
+  padding: clamp(1.25rem, 4vw, 2.75rem);
+  border: 1px solid var(--app-control-border);
+  border-radius: var(--ui-radius-card);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-card);
+}
+.connection-card .brand-mark {
+  margin: 0 0 1rem;
+}
+.connection-card h1 {
+  margin: 0 0 0.7rem;
+  font-size: calc(var(--app-font-size-display) * var(--app-text-scale));
+  line-height: 1.15;
+  letter-spacing: -0.045em;
+}
+.connection-intro {
+  color: var(--app-muted);
+  line-height: 1.5;
+}
+.connection-guide-link {
+  color: var(--app-muted);
+  font-size: calc(var(--app-font-size-compact) * var(--app-text-scale));
+}
+.connection-guide-link a {
+  color: var(--app-accent-foreground);
+  font-weight: 650;
+}
+.connection-card form {
+  display: grid;
+  gap: var(--ui-space-6);
+  margin-top: 1.3rem;
+}
+.connection-card label {
+  font-weight: 650;
+}
+.field-fineprint {
+  margin: -0.15rem 0 var(--ui-space-4);
+  color: var(--app-muted);
+  font-size: calc(var(--app-font-size-small) * var(--app-text-scale));
+}
+.connection-card input {
+  width: 100%;
+  min-height: var(--ui-control-height-large);
+  padding: var(--ui-space-7) 0.7rem;
+  border: 1px solid var(--app-control-border);
+  border-radius: var(--ui-control-radius);
+}
+.connection-card button {
+  min-height: var(--ui-control-height-large);
+  padding: var(--ui-space-6) 0.8rem;
+  border: 1px solid var(--app-control-border);
+  border-radius: var(--ui-control-radius);
+  color: var(--app-accent-foreground);
+  background: var(--app-accent-soft);
+}
+.connection-card form button {
+  color: var(--app-accent-contrast);
+  border-color: var(--app-accent);
+  background: var(--app-accent);
+}
+.connection-card button:hover,
+.connection-card button:focus-visible {
+  border-color: var(--app-accent-border);
+  color: var(--app-accent-foreground);
+  background: var(--app-accent-soft);
+}
+.connection-card form button:hover,
+.connection-card form button:focus-visible {
+  color: var(--app-accent-contrast);
+  background: var(--app-accent-strong);
+}
+.account-management {
+  display: grid;
+  gap: var(--ui-space-8);
+  margin-top: var(--ui-space-13);
+  padding-top: var(--ui-space-11);
+  border-top: 1px solid var(--app-border);
+}
+.account-management h2 {
+  margin: 0;
+  font-size: calc(var(--app-font-size-body) * var(--app-text-scale));
+}
+.account-management > div {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-6);
+  flex-wrap: wrap;
+}
+.account-management > div span {
+  margin-right: auto;
+  font-weight: 650;
+}
+.connection-error {
+  padding: var(--ui-space-8) var(--ui-space-9);
+  border-radius: var(--ui-radius-control);
+  color: var(--app-danger);
+  background: var(--app-danger-background);
+  overflow-wrap: anywhere;
+}
+.empty-message,
+.loading-screen {
+  color: var(--app-muted);
+}
+.loading-screen {
+  padding: var(--ui-space-14);
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

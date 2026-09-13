@@ -1,0 +1,23 @@
+{
+  "name": "SquillPad",
+  "short_name": "SquillPad",
+  "description": "A local-first spatial Markdown and vector ink notebook.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f7f7f9",
+  "theme_color": "#463177",
+  "icons": [
+    {
+      "src": "./squillpad-light.png",
+      "sizes": "144x48",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./squillpad-dark.png",
+      "sizes": "144x48",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

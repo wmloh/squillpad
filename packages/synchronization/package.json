@@ -1,0 +1,27 @@
+{
+  "name": "@squillpad/synchronization",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run --reporter=minimal --silent=passed-only --hideSkippedTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@squillpad/core-model": "workspace:*",
+    "y-indexeddb": "^9.0.12",
+    "y-websocket": "^3.1.0",
+    "yjs": "13.6.27"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2",
+    "vitest": "4.1.11"
+  }
+}

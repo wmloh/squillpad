@@ -1,0 +1,104 @@
+@media (min-width: 901px) and (max-width: 1200px) {
+  .notebook-layout {
+    --navigation-section-width: 11rem;
+    --navigation-page-width: 13rem;
+  }
+  .page-workspace {
+    padding: var(--ui-space-11);
+  }
+}
+@media (max-width: 900px) {
+  .notebook-layout {
+    flex: 1;
+  }
+  .page-heading > .editable-title {
+    flex-basis: 100%;
+  }
+  .canvas-toolbar {
+    max-height: 4.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@keyframes canvas-fullscreen-open {
+  0% {
+    opacity: 0.82;
+    transform: scale(0.94);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes canvas-fullscreen-close {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.82;
+    transform: scale(0.94);
+  }
+}
+.notebook-app:fullscreen {
+  background: var(--canvas-background);
+}
+.notebook-app[data-fullscreen-phase="opening"] .spatial-canvas-frame {
+  animation: canvas-fullscreen-open 420ms var(--ui-motion-snappy) both;
+  transform-origin: center;
+  will-change: opacity, transform;
+}
+.notebook-app[data-fullscreen-phase="closing"] .spatial-canvas-frame {
+  animation: canvas-fullscreen-close 420ms var(--ui-motion-exit) both;
+  transform-origin: center;
+  will-change: opacity, transform;
+}
+.notebook-app.is-canvas-fullscreen {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+.notebook-app.is-canvas-fullscreen > .topbar,
+.notebook-app.is-canvas-fullscreen > .lan-sharing,
+.notebook-app.is-canvas-fullscreen > .notification-area,
+.notebook-app.is-canvas-fullscreen .section-rail,
+.notebook-app.is-canvas-fullscreen .page-sidebar,
+.notebook-app.is-canvas-fullscreen .page-heading {
+  display: none;
+}
+.notebook-app.is-canvas-fullscreen > .host-stopped-notification {
+  top: var(--ui-space-11);
+  z-index: 1200;
+}
+.notebook-app.is-canvas-fullscreen .notebook-layout {
+  display: block;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.notebook-app.is-canvas-fullscreen .page-workspace {
+  height: 100%;
+  padding: 0;
+  background: var(--canvas-background);
+}
+.notebook-app.is-canvas-fullscreen .spatial-canvas-frame {
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.notebook-app.is-canvas-fullscreen .navigation-floating-toggle {
+  display: none;
+}

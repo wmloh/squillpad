@@ -1,0 +1,35 @@
+{
+  "name": "squillpad",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local-first spatial Markdown and vector ink notebook.",
+  "license": "GPL-3.0-only",
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm run build:shared && concurrently --kill-others-on-fail --names web,server --prefix-colors cyan,magenta \"pnpm --filter @squillpad/web dev\" \"pnpm --filter @squillpad/server dev\"",
+    "build": "pnpm --recursive --if-present run build",
+    "build:shared": "pnpm --filter @squillpad/core-model build && pnpm --filter @squillpad/storage build && pnpm --filter @squillpad/synchronization build && pnpm --filter @squillpad/server build && pnpm --filter @squillpad/ui build",
+    "test": "pnpm run build:shared && pnpm run test:boundaries && pnpm --recursive --if-present run test",
+    "test:e2e": "pnpm run build:shared && pnpm --filter @squillpad/web test:e2e",
+    "test:boundaries": "node scripts/check-package-boundaries.mjs",
+    "typecheck": "pnpm run build:shared && pnpm --recursive --if-present run typecheck",
+    "lint": "pnpm run build:shared && eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "9.33.0",
+    "concurrently": "9.2.1",
+    "eslint": "9.33.0",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "globals": "16.3.0",
+    "prettier": "3.6.2",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.39.1",
+    "vitest": "4.1.11"
+  }
+}
