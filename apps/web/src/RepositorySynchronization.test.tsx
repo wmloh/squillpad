@@ -41,10 +41,105 @@ describe("RepositorySynchronization", () => {
     const help = container!.querySelector<HTMLButtonElement>(".repository-sync-help");
     expect(help?.getAttribute("aria-describedby")).toBe("repository-sync-instructions");
     expect(container!.querySelector('[role="tooltip"]')?.textContent).toContain(
-      "Configure SSH keys or a Git credential manager outside SquillPad.",
+      "Use an SSH URL such as git@github.com:owner/repository.git; HTTPS URLs are not supported.",
     );
     expect(container!.querySelector(".repository-sync-instructions")).toBeNull();
-    expect(container!.querySelector('input[type="url"]')).not.toBeNull();
+    expect(container!.querySelector('input[type="text"]')).not.toBeNull();
+    expect(container!.querySelector('input[type="text"]')?.getAttribute("placeholder")).toBe(
+      "git@github.com:owner/project.git",
+    );
+  });
+
+  it("lets the host edit the SSH repository link and inspect the new remote", async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(
+        jsonResponse({
+          available: true,
+          configured: true,
+          remoteUrl: "git@github.com:example/notebook.git",
+          branch: "main",
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          outcome: "up-to-date",
+          message: "Local and GitHub snapshots are up to date.",
+          remoteUpdateAvailable: false,
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          outcome: "up-to-date",
+          message: "The replacement repository is ready.",
+          remoteUpdateAvailable: false,
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          available: true,
+          configured: true,
+          remoteUrl: "git@github.com:other/notebook.git",
+          branch: "main",
+        }),
+      );
+    await renderSynchronization();
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 10));
+      container!.querySelector<HTMLButtonElement>(".repository-sync-button")?.click();
+      await Promise.resolve();
+    });
+
+    const input = container!.querySelector<HTMLInputElement>(".repository-sync-repository input");
+    expect(input?.value).toBe("git@github.com:example/notebook.git");
+    const save = [...container!.querySelectorAll<HTMLButtonElement>("button")].find(
+      (button) => button.textContent === "Save link and inspect",
+    );
+    expect(save?.disabled).toBe(true);
+
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    setter?.call(input, "git@github.com:other/notebook.git");
+    await act(async () => {
+      input?.dispatchEvent(new Event("input", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(save?.disabled).toBe(false);
+
+    await act(async () => {
+      save?.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    const configureCall = fetchMock.mock.calls.find(
+      ([request]) => String(request) === "/api/repository-sync/configure",
+    );
+    expect(JSON.parse(String(configureCall?.[1]?.body))).toEqual({
+      url: "git@github.com:other/notebook.git",
+      note: "",
+    });
+    expect(
+      container!.querySelector<HTMLInputElement>(".repository-sync-repository input")?.value,
+    ).toBe("git@github.com:other/notebook.git");
+  });
+
+  it("shows an SSH migration editor for legacy HTTPS links", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse({
+        available: true,
+        configured: false,
+        remoteUrl: "https://github.com/example/notebook.git",
+        branch: "main",
+      }),
+    );
+    await renderSynchronization();
+    await act(async () => {
+      container!.querySelector<HTMLButtonElement>(".repository-sync-button")?.click();
+      await Promise.resolve();
+    });
+
+    expect(container!.querySelector('[aria-label="Migrate GitHub repository"]')).not.toBeNull();
+    expect(container!.textContent).toContain("legacy or unsupported remote");
+    expect(container!.textContent).toContain("Save SSH link and inspect");
+    expect(container!.querySelector(".repository-sync-actions")).toBeNull();
   });
 
   it("does not expose the button when the host rejects the capability request", async () => {

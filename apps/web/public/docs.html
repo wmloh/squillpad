@@ -1436,17 +1436,20 @@
           <li>
             <p>
               <strong>Prepare the host.</strong> Git must be available on the host. Configure Git
-              author information and HTTPS/SSH credentials outside SquillPad. Create or choose a
+              author information and an SSH key or agent outside SquillPad. Create or choose a
               dedicated GitHub repository that is empty or already contains a valid SquillPad
-              project at its root.
+              project at its root. SquillPad requires the SSH remote format
+              <code>git@github.com:owner/repository.git</code>; HTTPS remotes are not supported
+              because the web app cannot prompt for GitHub usernames or passwords.
             </p>
           </li>
           <li>
             <p>
               <strong>Open the host-only Sync control.</strong> Choose the circular-arrow
               <strong>Sync</strong> button in the top bar. Connected clients do not see this
-              control. Enter the GitHub repository URL and, if useful, an optional first snapshot
-              note.
+              control. Enter the GitHub SSH repository URL
+              <code>git@github.com:owner/repository.git</code> and, if useful, an optional first
+              snapshot note.
             </p>
           </li>
           <li>
@@ -1500,8 +1503,15 @@
               <tr>
                 <td>Connect and inspect</td>
                 <td>
-                  Checks the repository URL, links this host to it, and creates the first snapshot
-                  or compares the existing remote project.
+                  Checks the SSH repository URL, links this host to it, and creates the first
+                  snapshot or compares the existing remote project.
+                </td>
+              </tr>
+              <tr>
+                <td>Save link and inspect</td>
+                <td>
+                  Lets the host change the dedicated SSH repository. Local snapshot history is
+                  preserved while the new repository is inspected.
                 </td>
               </tr>
               <tr>
@@ -1748,10 +1758,11 @@ pnpm build
             <summary>GitHub synchronization stopped or shows a review.</summary>
             <div>
               <p>
-                Git must be installed on the host, Git author information must be set, and HTTPS or
-                SSH credentials must work outside SquillPad. Check that the remote is dedicated to
-                SquillPad and is empty or has a valid SquillPad project at its root. If both the
-                host and GitHub changed, use the review rather than starting a second sync.
+                Git must be installed on the host, Git author information must be set, and an SSH
+                key or agent must work outside SquillPad. Check that the remote uses the form
+                <code>git@github.com:owner/repository.git</code>, is dedicated to SquillPad, and is
+                empty or has a valid SquillPad project at its root. If both the host and GitHub
+                changed, use the review rather than starting a second sync.
                 SquillPad does not intentionally overwrite remote history when an operation stops;
                 correct the problem and try again.
               </p>

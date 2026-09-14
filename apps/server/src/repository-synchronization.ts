@@ -191,9 +191,13 @@ export class RepositorySynchronizationService {
     if (!(await this.#hasGitRepository())) return { available: true, configured: false };
     const remoteUrl = await this.#optionalGit(["remote", "get-url", REMOTE_NAME]);
     const branch = await this.#optionalGit(["config", "--get", SYNC_BRANCH_KEY]);
+    const configured =
+      remoteUrl !== undefined &&
+      branch !== undefined &&
+      (this.#options.allowNonGitHubRemoteForTests === true || isGitHubSshUrl(remoteUrl));
     return {
       available: true,
-      configured: remoteUrl !== undefined && branch !== undefined,
+      configured,
       ...(remoteUrl === undefined ? {} : { remoteUrl }),
       ...(branch === undefined ? {} : { branch }),
     };
@@ -278,9 +282,7 @@ export class RepositorySynchronizationService {
         if (existingUrl === undefined) {
           await this.#git(["remote", "add", REMOTE_NAME, normalizedUrl]);
         } else if (existingUrl !== normalizedUrl) {
-          throw new Error(
-            `This project is already linked to ${existingUrl}. Remove that link explicitly before connecting another repository.`,
-          );
+          await this.#git(["remote", "set-url", REMOTE_NAME, normalizedUrl]);
         }
 
         const remote = await this.#discoverRemote();
@@ -1100,6 +1102,11 @@ export class RepositorySynchronizationService {
   async #assertConfigured(): Promise<void> {
     const status = await this.status();
     if (!status.configured) {
+      if (status.remoteUrl !== undefined && !isGitHubSshUrl(status.remoteUrl)) {
+        throw new Error(
+          "This project uses a legacy or unsupported Git remote. Update it to git@github.com:owner/repository.git before synchronizing.",
+        );
+      }
       throw new Error("Connect a dedicated GitHub repository before synchronizing.");
     }
   }
@@ -1786,29 +1793,16 @@ function safeGitArguments(projectRoot: string, args: readonly string[]): string[
 
 function validateGitHubUrl(value: string): string {
   const url = value.trim();
-  if (/^git@github\.com:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/.test(url)) return url;
-  let parsed: URL;
-  try {
-    parsed = new URL(url);
-  } catch {
-    throw new Error("Paste an HTTPS or SSH GitHub repository URL, not a web page or local path.");
+  if (!isGitHubSshUrl(url)) {
+    throw new Error(
+      "Use an SSH GitHub repository URL in the form git@github.com:owner/repository.git.",
+    );
   }
-  const secureProtocol = parsed.protocol === "https:" || parsed.protocol === "ssh:";
-  const expectedUser =
-    parsed.protocol !== "ssh:" || parsed.username === "" || parsed.username === "git";
-  const repositoryPath = /^\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?\/?$/.test(parsed.pathname);
-  if (
-    !secureProtocol ||
-    parsed.hostname.toLowerCase() !== "github.com" ||
-    !expectedUser ||
-    parsed.password !== "" ||
-    parsed.search !== "" ||
-    parsed.hash !== "" ||
-    !repositoryPath
-  ) {
-    throw new Error("Use a dedicated github.com HTTPS or SSH repository URL without credentials.");
-  }
-  return url.replace(/\/$/, "");
+  return url;
+}
+
+function isGitHubSshUrl(value: string): boolean {
+  return /^git@github\.com:[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\.git$/.test(value.trim());
 }
 
 function snapshotMessage(note: string | undefined): string {

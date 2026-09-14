@@ -84,6 +84,10 @@ export function RepositorySynchronizationDialogs({
 
   if (status === undefined) return null;
 
+  const needsSshMigration = !status.configured && status.remoteUrl !== undefined;
+  const repositoryLinkDisabled =
+    busy || review !== undefined || confirmation !== undefined || reloadRequested;
+
   return (
     <>
       {open && (
@@ -114,7 +118,11 @@ export function RepositorySynchronizationDialogs({
                     >
                       <ol>
                         <li>Use an empty repository or a valid SquillPad project at its root.</li>
-                        <li>Configure SSH keys or a Git credential manager outside SquillPad.</li>
+                        <li>
+                          Use an SSH URL such as <code>git@github.com:owner/repository.git</code>;
+                          HTTPS URLs are not supported.
+                        </li>
+                        <li>Configure SSH keys or an SSH agent outside SquillPad.</li>
                         <li>
                           Sync checks both histories before pushing and opens a review whenever both
                           changed.
@@ -125,8 +133,9 @@ export function RepositorySynchronizationDialogs({
                 </div>
                 <p>
                   This host-only feature stores canonical project snapshots in a dedicated GitHub
-                  repository. It uses Git credentials already configured on this host and never
-                  exposes synchronization controls to connected clients.
+                  repository. The link must use SSH, and Git credentials must already be configured
+                  on this host; SquillPad never exposes synchronization controls to connected
+                  clients.
                 </p>
               </div>
               <button
@@ -141,19 +150,31 @@ export function RepositorySynchronizationDialogs({
             </header>
 
             {!status.configured ? (
-              <section aria-label="Connect GitHub repository">
+              <section
+                aria-label={
+                  needsSshMigration ? "Migrate GitHub repository" : "Connect GitHub repository"
+                }
+              >
                 <label>
-                  GitHub repository URL
+                  GitHub SSH repository URL
                   <input
-                    type="url"
+                    type="text"
+                    autoCapitalize="none"
+                    autoComplete="off"
+                    spellCheck={false}
                     value={url}
-                    placeholder="https://github.com/owner/project.git"
-                    disabled={busy}
+                    placeholder="git@github.com:owner/project.git"
+                    disabled={repositoryLinkDisabled}
                     onChange={(event) => setUrl(event.target.value)}
                   />
                 </label>
+                <p className="repository-sync-action-explanation">
+                  {needsSshMigration
+                    ? "This project has a legacy or unsupported remote. Replace it with the SSH URL above before synchronizing."
+                    : "Use the exact SSH format git@github.com:owner/repository.git. Configure the SSH key or agent on this host before connecting."}
+                </p>
                 <label>
-                  Optional first snapshot note
+                  {needsSshMigration ? "Optional snapshot note" : "Optional first snapshot note"}
                   <input
                     value={note}
                     maxLength={200}
@@ -163,57 +184,96 @@ export function RepositorySynchronizationDialogs({
                 </label>
                 <button
                   type="button"
-                  disabled={busy || url.trim().length === 0}
+                  disabled={repositoryLinkDisabled || url.trim().length === 0}
                   onClick={() => void run("/api/repository-sync/configure", { url, note })}
                 >
-                  {busy ? "Checking repository…" : "Connect and inspect"}
+                  {busy
+                    ? needsSshMigration
+                      ? "Migrating…"
+                      : "Checking repository…"
+                    : needsSshMigration
+                      ? "Save SSH link and inspect"
+                      : "Connect and inspect"}
                 </button>
               </section>
             ) : (
-              <section className="repository-sync-actions" aria-label="Synchronize snapshots">
-                <p>
-                  <strong>{status.remoteUrl}</strong>
-                  {status.branch === undefined ? "" : ` · ${status.branch}`}
-                </p>
-                <label>
-                  Optional snapshot note
-                  <input
-                    value={note}
-                    maxLength={200}
-                    disabled={busy}
-                    onChange={(event) => setNote(event.target.value)}
+              <>
+                <section className="repository-sync-repository" aria-label="Edit GitHub repository">
+                  <label>
+                    GitHub SSH repository URL
+                    <input
+                      type="text"
+                      autoCapitalize="none"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={url}
+                      placeholder="git@github.com:owner/project.git"
+                      disabled={repositoryLinkDisabled}
+                      onChange={(event) => setUrl(event.target.value)}
+                    />
+                  </label>
+                  <p className="repository-sync-action-explanation">
+                    Change the link here to switch this host to another dedicated repository. The
+                    local snapshot history is preserved, and the new repository is inspected before
+                    it is used.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={
+                      repositoryLinkDisabled ||
+                      url.trim().length === 0 ||
+                      url.trim() === status.remoteUrl
+                    }
+                    onClick={() => void run("/api/repository-sync/configure", { url, note })}
+                  >
+                    {busy ? "Checking repository…" : "Save link and inspect"}
+                  </button>
+                </section>
+                <section className="repository-sync-actions" aria-label="Synchronize snapshots">
+                  <p>
+                    <strong>{status.remoteUrl}</strong>
+                    {status.branch === undefined ? "" : ` · ${status.branch}`}
+                  </p>
+                  <label>
+                    Optional snapshot note
+                    <input
+                      value={note}
+                      maxLength={200}
+                      disabled={busy}
+                      onChange={(event) => setNote(event.target.value)}
+                    />
+                  </label>
+                  <p className="repository-sync-action-explanation">
+                    <strong>Refresh</strong> fetches the current GitHub branch and recomputes this
+                    comparison without publishing or applying a snapshot. <strong>Sync now</strong>{" "}
+                    flushes pending canonical changes and may commit them before comparing local and
+                    GitHub heads. Use the review choices for a specific snapshot decision; a fresh
+                    sync can turn an open remote-update review into a conflict.
+                  </p>
+                  <div>
+                    <button
+                      type="button"
+                      className={`repository-sync-run-button repository-sync-run-button--${theme}`}
+                      disabled={busy || review !== undefined || reloadRequested}
+                      onClick={() => void run("/api/repository-sync/run", { note })}
+                    >
+                      {busy ? "Checking…" : "Sync now"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy || review !== undefined || reloadRequested}
+                      onClick={openHistory}
+                    >
+                      Previous snapshots
+                    </button>
+                  </div>
+                  <RepositoryChangeSummary
+                    disabled={busy || historyOpen || review !== undefined || reloadRequested}
+                    onReview={handleComparisonReview}
+                    refreshToken={state.comparisonRefreshToken}
                   />
-                </label>
-                <p className="repository-sync-action-explanation">
-                  <strong>Refresh</strong> fetches the current GitHub branch and recomputes this
-                  comparison without publishing or applying a snapshot. <strong>Sync now</strong>{" "}
-                  flushes pending canonical changes and may commit them before comparing local and
-                  GitHub heads. Use the review choices for a specific snapshot decision; a fresh
-                  sync can turn an open remote-update review into a conflict.
-                </p>
-                <div>
-                  <button
-                    type="button"
-                    className={`repository-sync-run-button repository-sync-run-button--${theme}`}
-                    disabled={busy || review !== undefined || reloadRequested}
-                    onClick={() => void run("/api/repository-sync/run", { note })}
-                  >
-                    {busy ? "Checking…" : "Sync now"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || review !== undefined || reloadRequested}
-                    onClick={openHistory}
-                  >
-                    Previous snapshots
-                  </button>
-                </div>
-                <RepositoryChangeSummary
-                  disabled={busy || historyOpen || review !== undefined || reloadRequested}
-                  onReview={handleComparisonReview}
-                  refreshToken={state.comparisonRefreshToken}
-                />
-              </section>
+                </section>
+              </>
             )}
 
             {message !== undefined && <p className="repository-sync-message">{message}</p>}

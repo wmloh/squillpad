@@ -68,6 +68,8 @@ The project directory must be empty or absent when creating a new project. If yo
 project, regenerate its launcher with `--launcher-only --replace-launcher` and the new directory;
 the launcher records an absolute project path.
 
+Every time the repository is updated, you will need to run `pnpm build`. In addition, if there are changes to [package.json](package.json), you will need to run `pnpm install` before building. After these steps, you can directly run your launcher.
+
 To run the development server against an existing project, set `SQUILLPAD_PROJECT` in the same
 shell before running `pnpm dev`:
 
@@ -98,9 +100,13 @@ workflow, records canonical project snapshots, fetches the configured branch, an
 for remote updates or conflicts. The workflow includes snapshot history, read-only previews,
 restores as new snapshots, and choices to combine, publish local content, or apply GitHub content.
 
-Git must be available on the host, and Git author information plus HTTPS/SSH credentials must be
-configured outside SquillPad. SquillPad does not collect or persist GitHub tokens. The remote must
-be empty or contain a valid SquillPad project at its root; it is not a live collaboration server.
+Git must be available on the host, and Git author information plus an SSH key or agent must be
+configured outside SquillPad. Enter the repository as an SSH remote in the form
+`git@github.com:owner/repository.git`; HTTPS remotes are not supported because SquillPad cannot
+prompt for GitHub usernames or passwords. The host can edit and save the link later; local snapshot
+history is preserved while the new repository is inspected. SquillPad does not collect or persist
+GitHub tokens. The remote must be empty or contain a valid SquillPad project at its root; it is not
+a live collaboration server.
 
 ## Project format and architecture
 

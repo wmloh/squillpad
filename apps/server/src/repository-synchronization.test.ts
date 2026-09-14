@@ -31,6 +31,73 @@ afterEach(async () => {
 });
 
 describe("repository synchronization", () => {
+  it("requires the exact SSH GitHub repository format", async () => {
+    const fixture = await createFixture();
+    const service = new RepositorySynchronizationService({
+      projectRoot: fixture.projectRoot,
+      flushCanonical: () => Promise.resolve(),
+      cleanupOrphanImageAssets: () => Promise.resolve(),
+      reloadCanonical: () => Promise.resolve(),
+    });
+
+    await expect(service.configure("https://github.com/example/notebook.git")).rejects.toThrow(
+      "Use an SSH GitHub repository URL in the form git@github.com:owner/repository.git.",
+    );
+    await expect(service.configure("git@github.com:example/notebook")).rejects.toThrow(
+      "Use an SSH GitHub repository URL in the form git@github.com:owner/repository.git.",
+    );
+  });
+
+  it("marks legacy HTTPS remotes as requiring SSH migration", async () => {
+    const fixture = await createFixture();
+    const legacyUrl = "https://github.com/example/notebook.git";
+    await git(fixture.projectRoot, ["remote", "add", "squillpad-sync", legacyUrl]);
+    await git(fixture.projectRoot, ["config", "squillpad.syncBranch", "main"]);
+    const service = new RepositorySynchronizationService({
+      projectRoot: fixture.projectRoot,
+      flushCanonical: () => Promise.resolve(),
+      cleanupOrphanImageAssets: () => Promise.resolve(),
+      reloadCanonical: () => Promise.resolve(),
+    });
+
+    await expect(service.status()).resolves.toEqual({
+      available: true,
+      configured: false,
+      remoteUrl: legacyUrl,
+      branch: "main",
+    });
+    await expect(service.synchronize()).rejects.toThrow(
+      "Update it to git@github.com:owner/repository.git before synchronizing.",
+    );
+  });
+
+  it("replaces the configured remote and preserves local history", async () => {
+    const fixture = await createFixture();
+    const replacementRoot = join(fixture.root, "replacement.git");
+    await mkdir(replacementRoot);
+    await git(replacementRoot, ["init", "--bare", "--initial-branch=main"]);
+    const replacementUrl = `file://${replacementRoot}`;
+    const service = new RepositorySynchronizationService({
+      projectRoot: fixture.projectRoot,
+      flushCanonical: () => Promise.resolve(),
+      cleanupOrphanImageAssets: () => Promise.resolve(),
+      reloadCanonical: () => Promise.resolve(),
+      allowNonGitHubRemoteForTests: true,
+    });
+
+    await service.configure(fixture.remoteUrl);
+    const localHead = await gitOutput(fixture.projectRoot, ["rev-parse", "HEAD"]);
+    await service.configure(replacementUrl);
+
+    expect(await gitOutput(fixture.projectRoot, ["remote", "get-url", "squillpad-sync"])).toBe(
+      replacementUrl,
+    );
+    expect(await gitOutput(fixture.projectRoot, ["rev-parse", "HEAD"])).toBe(localHead);
+    expect(
+      await gitOutput(fixture.root, [`--git-dir=${replacementRoot}`, "rev-parse", "refs/heads/main"]),
+    ).toBe(localHead);
+  });
+
   it("publishes settings-only profile records with the canonical project snapshot", async () => {
     const fixture = await createFixture();
     const profileStore = await ProfileSettingsStore.open(fixture.projectRoot);
