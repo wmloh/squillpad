@@ -57,6 +57,15 @@ it("uses the project sharing default and toggles remote access without stopping 
     clientSlotsUsed: 1,
   });
   expect((await fetch(`${service.origin}/health`)).ok).toBe(true);
+  expect(
+    new URLSearchParams(new URL(service.authorizedUrl).hash.slice(1)).get("access_token"),
+  ).toBe(service.accessToken);
+  for (const connection of service.sharing().connections) {
+    expect(new URLSearchParams(new URL(connection.url).hash.slice(1)).get("access_token")).not.toBe(
+      service.accessToken,
+    );
+    expect(connection.qr).toMatch(/^data:image\/png;base64,/);
+  }
 
   const disabled = await fetch(`${service.origin}/api/sharing`, {
     method: "POST",

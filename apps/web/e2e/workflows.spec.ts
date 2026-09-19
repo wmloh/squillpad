@@ -162,6 +162,60 @@ test("centers fullscreen Markdown editing and opens the editor on the left", asy
   expect(editorBounds.x - canvasBounds.x).toBeLessThan(24);
 });
 
+test("keeps empty Markdown editor footer controls usable in windowed and fullscreen modes", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const canvas = await openFreshPage(page);
+
+  const exerciseEmptyEditorFooter = async () => {
+    const bounds = await canvas.boundingBox();
+    if (bounds === null) throw new Error("Canvas bounds are unavailable");
+
+    await page.getByRole("button", { name: "Text", exact: true }).click();
+    await page.mouse.click(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+
+    const editor = page.locator(".markdown-editor-popover.is-open");
+    const colorStyle = page.getByLabel("Markdown color style");
+    const createGroup = page.getByRole("button", {
+      name: "Create text box group",
+      exact: true,
+    });
+    await expect(editor).toBeVisible();
+    await expect(createGroup).toBeEnabled();
+
+    await colorStyle.click();
+    await expect(editor).toBeVisible();
+    await createGroup.click();
+    await expect(editor).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Add text box below", exact: true }),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Close Markdown editor", exact: true }).click();
+    await expect(editor).toHaveCount(0);
+  };
+
+  await exerciseEmptyEditorFooter();
+  await page.getByRole("button", { name: "Enter fullscreen", exact: true }).click();
+  await expect(page.locator(".notebook-app.is-canvas-fullscreen")).toBeVisible();
+  await exerciseEmptyEditorFooter();
+
+  const fullscreenBounds = await canvas.boundingBox();
+  if (fullscreenBounds === null) throw new Error("Fullscreen canvas bounds are unavailable");
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await page.mouse.click(
+    fullscreenBounds.x + fullscreenBounds.width / 2,
+    fullscreenBounds.y + fullscreenBounds.height / 2,
+  );
+  await expect(page.locator(".markdown-editor-popover.is-open")).toBeVisible();
+  await page.mouse.click(
+    fullscreenBounds.x + fullscreenBounds.width - 24,
+    fullscreenBounds.y + fullscreenBounds.height - 24,
+  );
+  await expect(page.locator(".markdown-editor-popover.is-open")).toHaveCount(0);
+});
+
 test("keeps a LAN client editable in fullscreen", async ({ page }) => {
   let storageDiagnosticsRequests = 0;
   await page.route("**/api/storage/diagnostics", async (route) => {

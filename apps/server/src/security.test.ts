@@ -4,11 +4,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { request as httpRequest } from "node:http";
 import type { IncomingMessage } from "node:http";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 import { createProject, ProjectHierarchyService } from "@squillpad/storage";
-import { createPageDocument, PageSyncClient } from "@squillpad/synchronization";
+import {
+  createPageDocument,
+  PageSyncClient,
+  replacePageContent,
+  updateMarkdownSource,
+  materializePageDocument,
+} from "@squillpad/synchronization";
 import { createHostServer } from "./app.js";
+import { AuthenticationService } from "./authentication.js";
 import { HostSynchronizationService } from "./host-synchronization.js";
 import { createAccessToken, createRequestGuard } from "./security.js";
 
@@ -18,7 +25,7 @@ afterEach(async () => {
   cleanups.length = 0;
 });
 
-async function fixture(token: string | undefined = createAccessToken()) {
+async function fixture(token: string | undefined = createAccessToken(), authenticated = false) {
   const directory = await mkdtemp(join(tmpdir(), "security-"));
   const session = await createProject(join(directory, "project"));
   cleanups.push(() => session.close());
@@ -37,7 +44,11 @@ async function fixture(token: string | undefined = createAccessToken()) {
   await mkdir(webRoot);
   await writeFile(join(webRoot, "index.html"), "<title>Notebook</title>");
   await writeFile(join(directory, "private.txt"), "PRIVATE SENTINEL");
+  const authentication = authenticated
+    ? await AuthenticationService.open(session.projectRoot, token)
+    : undefined;
   const server = createHostServer({
+    ...(authentication === undefined ? {} : { authentication }),
     hierarchy,
     synchronization,
     webRoot,
@@ -54,6 +65,8 @@ async function fixture(token: string | undefined = createAccessToken()) {
   const generation = synchronization.status().synchronizationGeneration;
   return {
     directory,
+    authentication,
+    hierarchy,
     base,
     token,
     synchronization,
@@ -343,5 +356,209 @@ it("closes invalid protocol messages and oversized synchronization frames", asyn
       socket.on("error", () => undefined);
     });
     expect(code).toBe(expectedCode);
+  }
+});
+
+it("scopes invitations to registration and keeps administration local", async () => {
+  const f = await fixture(createAccessToken(), true);
+  const auth = f.authentication!;
+  const invite = {
+    authorization: `Bearer ${auth.invitationToken}`,
+    "content-type": "application/json",
+  };
+  expect(auth.invitationToken).not.toBe(f.token);
+  const status = await requestFromRemote(`${f.base}/api/auth/status`, {
+    headers: invite,
+  });
+  expect(JSON.parse(status.body)).toMatchObject({
+    authenticated: false,
+    hostAuthorized: false,
+    canRegister: true,
+  });
+  expect((await requestFromRemote(`${f.base}/api/hierarchy`, { headers: invite })).status).toBe(
+    401,
+  );
+  expect(await rejectedSocket(f.room, invite)).toBe(401);
+  expect(
+    (
+      await requestFromRemote(`${f.base}/api/auth/register`, {
+        method: "POST",
+        headers: invite,
+        body: JSON.stringify({ username: "invited", password: "x" }),
+      })
+    ).status,
+  ).toBe(201);
+  const session = await auth.login("invited", "x");
+  const cookie = `squillpad_session=${session}`;
+  expect(
+    (
+      await requestFromRemote(`${f.base}/api/hierarchy`, {
+        headers: { ...invite, cookie },
+      })
+    ).status,
+  ).toBe(200);
+  for (const path of [
+    "/api/auth/accounts",
+    "/api/auth/reset-password",
+    "/api/auth/remove-account",
+    "/api/host/stop",
+    "/api/repository-sync/status",
+    "/api/sharing",
+    "/api/storage/diagnostics",
+    "/api/storage/runtime-cache/cleanup",
+    "/api/profile/settings/all",
+  ]) {
+    for (const credential of [auth.invitationToken, f.token!]) {
+      const result = await requestFromRemote(`${f.base}${path}`, {
+        method:
+          path.includes("reset-password") ||
+          path.includes("remove-account") ||
+          path.includes("stop") ||
+          path.includes("cleanup")
+            ? "POST"
+            : "GET",
+        headers: {
+          authorization: `Bearer ${credential}`,
+          cookie,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ username: "invited", password: "changed" }),
+      });
+      expect(result.status, path).toBe(403);
+    }
+  }
+  const headers = {
+    authorization: `Bearer ${f.token}`,
+    "content-type": "application/json",
+  };
+  expect((await fetch(`${f.base}/api/auth/accounts`, { headers })).status).toBe(200);
+  expect(
+    (
+      await fetch(`${f.base}/api/auth/reset-password`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ username: "invited", password: "changed" }),
+      })
+    ).status,
+  ).toBe(200);
+  expect(auth.acceptsCredential(await auth.login("invited", "changed"))).toBe(true);
+});
+
+it.each(["logout", "reset", "remove", "evict"] as const)(
+  "disconnects revoked sockets on %s while unrelated sessions keep collaborating",
+  async (action) => {
+    const f = await fixture(createAccessToken(), true);
+    const auth = f.authentication!;
+    const token = await auth.register("victim", "x");
+    const otherToken = await auth.register("unrelated", "x");
+    const connect = async (credential: string, cookie?: string) => {
+      class SessionWebSocket extends WebSocket {
+        constructor(address: string, protocols?: string | string[]) {
+          super(address, protocols, cookie === undefined ? {} : { headers: { cookie } });
+        }
+      }
+      const value = new PageSyncClient({
+        document: createPageDocument(),
+        projectId: f.projectId,
+        pageId: f.pageId,
+        synchronizationGeneration: f.synchronization.status().synchronizationGeneration,
+        serverUrl: `${f.base.replace("http:", "ws:")}/sync`,
+        disableIndexedDb: true,
+        accessToken: credential,
+        WebSocketPolyfill: SessionWebSocket as unknown as typeof globalThis.WebSocket,
+      });
+      cleanups.push(async () => value.destroy());
+      await expect.poll(() => value.status).toBe("synchronized");
+      return value;
+    };
+    const victim = await connect(auth.invitationToken, `squillpad_session=${token}`);
+    const survivor = await connect(otherToken);
+    const sameAccountToken = await auth.login("victim", "x");
+    const sameAccount = await connect(sameAccountToken);
+    const id = "323e4567-e89b-42d3-a456-426614174002";
+    replacePageContent(survivor.document, {
+      canvas: [
+        {
+          id,
+          kind: "markdown",
+          position: [0, 0],
+          z: 0,
+          width: 320,
+          height: 160,
+          source: `markdown/${id}.md`,
+        },
+      ],
+      markdown: { [id]: "before revocation" },
+    });
+    await expect
+      .poll(() => materializePageDocument(victim.document).markdown[id])
+      .toBe("before revocation");
+    const closed = new Promise<number>((resolve) =>
+      victim.provider.on("closed", (event: { code: number }) => resolve(event.code)),
+    );
+    if (action === "logout")
+      await auth.logout({
+        headers: { cookie: `squillpad_session=${token}` },
+      } as IncomingMessage);
+    if (action === "reset") await auth.resetPassword("victim", "new");
+    if (action === "remove") await auth.removeAccount("victim");
+    if (action === "evict") for (let i = 0; i < 9; i++) await auth.login("victim", "x");
+    expect(await closed).toBe(4401);
+    expect(await rejectedSocket(f.room, {}, ["squillpad", `squillpad-token.${token}`])).toBe(401);
+    const observer = await connect(otherToken);
+    updateMarkdownSource(survivor.document, id, action);
+    updateMarkdownSource(victim.document, id, "forbidden");
+    await expect.poll(() => materializePageDocument(observer.document).markdown[id]).toBe(action);
+    expect(materializePageDocument(survivor.document).markdown[id]).toBe(action);
+    expect(materializePageDocument(victim.document).markdown[id]).toBe("forbidden");
+    await f.synchronization.flush();
+    expect((await f.hierarchy.loadPage(f.sectionId, f.pageId)).markdown[id]).toBe(action);
+    expect(survivor.provider.wsconnected).toBe(true);
+    if (action === "reset" || action === "remove") {
+      await expect.poll(() => sameAccount.provider.wsconnected).toBe(false);
+      expect(materializePageDocument(sameAccount.document).markdown[id]).toBe("before revocation");
+    } else {
+      await expect
+        .poll(() => materializePageDocument(sameAccount.document).markdown[id])
+        .toBe(action);
+    }
+  },
+);
+
+it("revokes a cookie-authenticated socket while its room is still loading", async () => {
+  const f = await fixture(createAccessToken(), true);
+  const auth = f.authentication!;
+  const token = await auth.register("pending", "x");
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const loadPage = f.hierarchy.loadPage.bind(f.hierarchy);
+  const loading = vi.spyOn(f.hierarchy, "loadPage").mockImplementationOnce(async (...args) => {
+    await pending;
+    return loadPage(...args);
+  });
+  const socket = new WebSocket(f.room, ["squillpad", `squillpad-token.${auth.invitationToken}`], {
+    localAddress: "127.0.0.2",
+    headers: { cookie: `squillpad_session=${token}` },
+  });
+  const received: unknown[] = [];
+  socket.on("message", (message) => received.push(message));
+  const closed = new Promise<number>((resolve) => socket.on("close", resolve));
+  try {
+    await new Promise<void>((resolve, reject) => {
+      socket.on("open", resolve);
+      socket.on("error", reject);
+    });
+    await expect.poll(() => loading.mock.calls.length).toBe(1);
+    await auth.logout({
+      headers: { cookie: `squillpad_session=${token}` },
+    } as IncomingMessage);
+    expect(await closed).toBe(4401);
+    expect(received).toEqual([]);
+  } finally {
+    release();
+    loading.mockRestore();
+    socket.terminate();
   }
 });

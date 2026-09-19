@@ -6,7 +6,11 @@ import { requestCredential } from "./authentication.js";
 export interface HostSecurityOptions {
   readonly token?: string;
   readonly allowedOrigins?: readonly string[];
-  readonly authenticate?: (credential: string | undefined) => boolean;
+  readonly authenticate?: (
+    credential: string | undefined,
+    request: IncomingMessage,
+    websocket: boolean,
+  ) => boolean;
   readonly sharingEnabled?: () => boolean;
 }
 
@@ -56,12 +60,17 @@ export function createRequestGuard(options: HostSecurityOptions = {}) {
     if (origin !== undefined && !origins.has(origin)) return 403;
     if (request.headers["sec-fetch-site"] === "cross-site") return 403;
     const publicAuthenticationRoute =
-      !websocket && (request.url === "/api/auth/status" || request.url === "/api/auth/login");
+      !websocket &&
+      (request.url === "/api/auth/status" ||
+        request.url === "/api/auth/login" ||
+        request.url === "/api/auth/register");
     const protectedResource =
       websocket || (request.url?.startsWith("/api") && !publicAuthenticationRoute);
     if (expected !== undefined && protectedResource) {
       const value = requestCredential(request, websocket);
-      if (options.authenticate?.(value) === true) return undefined;
+      if (options.authenticate !== undefined) {
+        return options.authenticate(value, request, websocket) ? undefined : 401;
+      }
       const supplied = Buffer.from(value ?? "");
       if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) return 401;
     }

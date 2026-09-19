@@ -288,7 +288,7 @@ describe("host server", () => {
       request.on("error", reject);
       request.end();
     });
-    expect(remoteSharing).toBe(403);
+    expect(remoteSharing).toBe(401);
 
     const registered = await fetch(`${base}/api/auth/register`, {
       method: "POST",

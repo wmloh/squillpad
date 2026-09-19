@@ -849,6 +849,7 @@ function CodeMirrorEditor({
   const initialSourceRef = useRef(source);
   const viewRef = useRef<EditorView | undefined>(undefined);
   const destroyingRef = useRef(false);
+  const footerPointerDownRef = useRef(false);
   const callbacksRef = useRef({ onChange, onCommit, onFinishEditing });
   const [historyAvailability, setHistoryAvailability] = useState({
     canRedo: false,
@@ -895,8 +896,15 @@ function CodeMirrorEditor({
             });
           }),
           EditorView.domEventHandlers({
-            blur: (_event, currentView) => {
+            blur: (event, currentView) => {
               if (destroyingRef.current) return false;
+              const editor = currentView.dom.closest(".markdown-editor-popover");
+              if (
+                footerPointerDownRef.current ||
+                (event.relatedTarget instanceof Node && editor?.contains(event.relatedTarget))
+              ) {
+                return false;
+              }
               if (currentView.state.doc.toString().trim().length === 0) {
                 callbacksRef.current.onCommit(currentView.state.doc.toString());
                 callbacksRef.current.onFinishEditing();
@@ -939,8 +947,15 @@ function CodeMirrorEditor({
   };
   const runTextGroupAction = (action: (() => void) | undefined) => {
     if (action === undefined) return;
-    onCommit(viewRef.current?.state.doc.toString() ?? source);
+    const currentSource = viewRef.current?.state.doc.toString() ?? source;
+    if (currentSource.trim().length > 0) onCommit(currentSource);
     action();
+  };
+  const keepEditorOpenForFooterInteraction = () => {
+    footerPointerDownRef.current = true;
+    window.setTimeout(() => {
+      footerPointerDownRef.current = false;
+    }, 0);
   };
   const runHistoryCommand = (command: typeof undo) => {
     const view = viewRef.current;
@@ -993,7 +1008,12 @@ function CodeMirrorEditor({
         </div>
       </div>
       <div ref={hostRef} className="markdown-source-editor" data-canvas-editor="active" />
-      <div className="markdown-editor-group-bar" role="group" aria-label="Text box group controls">
+      <div
+        className="markdown-editor-group-bar"
+        role="group"
+        aria-label="Text box group controls"
+        onPointerDownCapture={keepEditorOpenForFooterInteraction}
+      >
         <label className="markdown-editor-style-select">
           <span>Color style</span>
           <select
@@ -1010,7 +1030,7 @@ function CodeMirrorEditor({
         {textGroupId === undefined ? (
           <button
             type="button"
-            disabled={source.trim().length === 0 || onCreateTextGroup === undefined}
+            disabled={onCreateTextGroup === undefined}
             onClick={() => runTextGroupAction(onCreateTextGroup)}
           >
             Create text box group
@@ -1019,14 +1039,14 @@ function CodeMirrorEditor({
           <>
             <button
               type="button"
-              disabled={source.trim().length === 0 || onAddTextGroupBlock === undefined}
+              disabled={onAddTextGroupBlock === undefined}
               onClick={() => runTextGroupAction(onAddTextGroupBlock)}
             >
               Add text box below
             </button>
             <button
               type="button"
-              disabled={source.trim().length === 0 || onDetachTextGroupBlock === undefined}
+              disabled={onDetachTextGroupBlock === undefined}
               onClick={() => runTextGroupAction(onDetachTextGroupBlock)}
             >
               Detach

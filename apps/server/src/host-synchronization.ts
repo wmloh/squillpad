@@ -36,6 +36,7 @@ import {
 } from "@squillpad/storage";
 import { consoleLogger, type StructuredLogger } from "./logging.js";
 import { isLoopbackAddress } from "./security.js";
+import type { AuthenticationService } from "./authentication.js";
 import * as decoding from "lib0/decoding";
 import * as encoding from "lib0/encoding";
 import {
@@ -207,6 +208,7 @@ export class HostSynchronizationService {
   attach(
     server: Server,
     guard: (request: IncomingMessage, websocket: boolean) => number | undefined,
+    authentication?: AuthenticationService,
   ): void {
     server.on("upgrade", (request, socket, head) => {
       // A client can reset the socket before ws has attached its own listener.
@@ -248,7 +250,13 @@ export class HostSynchronizationService {
         return;
       }
       this.#webSockets.handleUpgrade(request, socket, head, (client) => {
-        void this.#accept(client, roomId, localClient).catch(() => {
+        const authorized = () => authentication?.acceptsRequest(request, true) ?? true;
+        const revoke = () => {
+          if (!authorized()) client.close(4401, "Session revoked");
+        };
+        const unsubscribe = authentication?.onSessionsRevoked(revoke);
+        client.once("close", () => unsubscribe?.());
+        void this.#accept(client, roomId, localClient, authorized).catch(() => {
           this.#logger.warn("sync.room_unavailable", {
             pageId: parsePageRoomId(roomId)?.pageId,
             roomId,
@@ -512,7 +520,18 @@ export class HostSynchronizationService {
     }));
   }
 
-  async #accept(client: WebSocket, roomId: string, localClient: boolean): Promise<void> {
+  async #accept(
+    client: WebSocket,
+    roomId: string,
+    localClient: boolean,
+    authorized: () => boolean,
+  ): Promise<void> {
+    const checkAuthorization = () => {
+      if (authorized()) return true;
+      client.close(4401, "Session revoked");
+      return false;
+    };
+    if (!checkAuthorization()) return;
     if (this.#closed) {
       this.#closeClient(client);
       return;
@@ -531,7 +550,7 @@ export class HostSynchronizationService {
     let windowStart = Date.now();
     let messages = 0;
     client.on("message", (data) => {
-      if (client.readyState !== WebSocket.OPEN) return;
+      if (client.readyState !== WebSocket.OPEN || !checkAuthorization()) return;
       if (Date.now() - windowStart > 1000) {
         windowStart = Date.now();
         messages = 0;
@@ -557,6 +576,7 @@ export class HostSynchronizationService {
     client.on("error", disconnect);
     const room = await this.#getRoom(roomId);
     state.room = room;
+    if (!checkAuthorization()) return;
     if (this.#closed) {
       this.#closeClient(client);
       return;
@@ -711,7 +731,7 @@ export class HostSynchronizationService {
   }
 
   #receive(room: HostPageRoom, client: WebSocket, data: RawData): void {
-    if (this.#closed) return;
+    if (this.#closed || client.readyState !== WebSocket.OPEN) return;
     if (!this.#sharingEnabled && !room.localClients.has(client)) {
       this.#closeSharingClient(client);
       return;
