@@ -76,7 +76,18 @@ export interface HostServerOptions extends HostSecurityOptions {
 }
 
 export function createHostServer(options: HostServerOptions = {}): Server {
-  const guard = createRequestGuard(options);
+  const guard = createRequestGuard({
+    ...options,
+    ...(options.authentication === undefined
+      ? {}
+      : {
+          authenticate: (
+            _credential: string | undefined,
+            request: IncomingMessage,
+            websocket: boolean,
+          ) => options.authentication!.acceptsRequest(request, websocket),
+        }),
+  });
   const loginAttempts = new Map<string, readonly number[]>();
   const server = createServer((request, response) => {
     const requestOrigin = request.headers.origin;
@@ -254,7 +265,7 @@ export function createHostServer(options: HostServerOptions = {}): Server {
 
     sendJson(response, 404, { error: "Not found" });
   });
-  options.synchronization?.attach(server, guard);
+  options.synchronization?.attach(server, guard, options.authentication);
   server.requestTimeout = 15_000;
   server.headersTimeout = 10_000;
   return server;
@@ -594,7 +605,12 @@ async function handleAuthenticationRequest(
       return;
     }
     if (request.method === "POST" && request.url === "/api/auth/register") {
-      requireHostAuthorization(authentication, request);
+      if (!authentication.canRegister(request)) {
+        throw new AuthenticationError(
+          403,
+          "A current invitation or local host access token is required",
+        );
+      }
       const body = await readJsonObject(request, 16 * 1024);
       const sessionToken = await authentication.register(
         requiredString(body, "username"),

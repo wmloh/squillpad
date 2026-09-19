@@ -144,7 +144,7 @@ function request(headers: {
   readonly authorization?: string;
   readonly cookie?: string;
 }): IncomingMessage {
-  return { headers } as IncomingMessage;
+  return { headers, socket: { remoteAddress: "127.0.0.1" } } as IncomingMessage;
 }
 
 function profileDrawingPalettes(): ProfileDrawingPalettes {

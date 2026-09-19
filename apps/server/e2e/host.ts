@@ -32,8 +32,6 @@ const server = createServer((request, response) => {
 });
 server.on("upgrade", (request, socket, head) => host.emit("upgrade", request, socket, head));
 const testToken = "e".repeat(43);
-const connectionUrl = `http://127.0.0.1:4274/#access_token=${testToken}`;
-const qr = await QRCode.toDataURL(connectionUrl);
 const securedSession = await createProject(
   join(await mkdtemp(join(directory, "security-")), "project"),
 );
@@ -47,6 +45,8 @@ const securedAuthentication = await AuthenticationService.open(
   securedSession.projectRoot,
   testToken,
 );
+const connectionUrl = `http://127.0.0.1:4274/#access_token=${securedAuthentication.invitationToken}`;
+const qr = await QRCode.toDataURL(connectionUrl);
 const securedHost = createHostServer({
   authentication: securedAuthentication,
   authenticate: (credential) => securedAuthentication.acceptsCredential(credential),

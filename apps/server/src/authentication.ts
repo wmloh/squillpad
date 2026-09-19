@@ -16,6 +16,8 @@ import {
 } from "@squillpad/core-model";
 import { ProfileSettingsStore } from "@squillpad/storage";
 
+import { isLoopbackAddress } from "./security.js";
+
 const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._-]{2,31}$/;
 const MAX_SESSIONS_PER_ACCOUNT = 10;
 const SCRYPT_OPTIONS = { N: 32_768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 } as const;
@@ -68,6 +70,9 @@ export class AuthenticationService {
   readonly #accessToken: string | undefined;
   readonly #filePath: string;
   readonly #profileSettings: ProfileSettingsStore | undefined;
+  readonly invitationToken = randomBytes(32).toString("base64url");
+  readonly #sessionListeners = new Set<() => void>();
+  #sessionHashes: Set<string>;
   #document: CredentialDocument;
   #mutationQueue = Promise.resolve();
   #writeQueue = Promise.resolve();
@@ -81,6 +86,7 @@ export class AuthenticationService {
     this.#filePath = filePath;
     this.#accessToken = accessToken;
     this.#document = document;
+    this.#sessionHashes = new Set(document.sessions.map((session) => session.tokenHash));
     this.#profileSettings = profileSettings;
   }
 
@@ -113,7 +119,7 @@ export class AuthenticationService {
 
   status(request: IncomingMessage): AuthenticationStatus {
     const credential = requestCredential(request);
-    const hostAuthorized = this.#isHostCredential(credential);
+    const hostAuthorized = this.isHostRequest(request);
     const username = this.#sessionUsername(requestSessionCredential(request) ?? credential);
     const account = this.#document.accounts.find((candidate) => candidate.username === username);
     const profile = username === undefined ? undefined : this.#profileSettings?.get(username);
@@ -122,7 +128,7 @@ export class AuthenticationService {
     const drawingPalettes = profile?.drawingPalettes ?? account?.preferences?.drawingPalettes;
     return {
       authenticated: hostAuthorized || username !== undefined,
-      canRegister: this.#accessToken !== undefined,
+      canRegister: this.canRegister(request),
       hasAccounts: this.#document.accounts.length > 0,
       hostAuthorized,
       ...(this.#profileSettings === undefined ? {} : { profileSettingsAvailable: true }),
@@ -139,7 +145,36 @@ export class AuthenticationService {
   }
 
   isHostRequest(request: IncomingMessage): boolean {
-    return this.#isHostCredential(requestCredential(request));
+    return (
+      isLoopbackAddress(request.socket.remoteAddress) &&
+      this.#isHostCredential(requestCredential(request))
+    );
+  }
+
+  canRegister(request: IncomingMessage): boolean {
+    const credential = requestCredential(request);
+    return (
+      this.isHostRequest(request) ||
+      (this.#accessToken !== undefined &&
+        credential !== undefined &&
+        safeStringEqual(credential, this.invitationToken))
+    );
+  }
+
+  acceptsRequest(request: IncomingMessage, websocket = false): boolean {
+    const credential = requestSessionCredential(request) ?? requestCredential(request, websocket);
+    return (
+      this.#sessionUsername(credential) !== undefined ||
+      (isLoopbackAddress(request.socket.remoteAddress) && this.#isHostCredential(credential))
+    );
+  }
+
+  /** Synchronous notification prevents revoked sockets receiving further updates. */
+  onSessionsRevoked(listener: () => void): () => void {
+    this.#sessionListeners.add(listener);
+    return () => {
+      this.#sessionListeners.delete(listener);
+    };
   }
 
   async register(usernameInput: string, password: string): Promise<string> {
@@ -464,6 +499,10 @@ export class AuthenticationService {
   }
 
   #persist(): Promise<void> {
+    const current = new Set(this.#document.sessions.map((session) => session.tokenHash));
+    const revoked = [...this.#sessionHashes].some((hash) => !current.has(hash));
+    this.#sessionHashes = current;
+    if (revoked) for (const listener of this.#sessionListeners) listener();
     const contents = JSON.stringify(this.#document, null, 2) + "\n";
     const operation = this.#writeQueue.then(async () => {
       const temporaryPath = `${this.#filePath}.${process.pid}.${randomBytes(8).toString("hex")}.tmp`;

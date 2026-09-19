@@ -19,13 +19,16 @@ There is no response-time or remediation SLA.
 
 - A project host binds to LAN-capable interfaces when a project is open. LAN sharing is enabled by
   default unless the project setting disables it; a host with no open project is loopback-only.
-- Each host process with an open project generates a fresh bearer access token. Authorized URLs and
-  QR codes contain that token, so treat them as credentials and do not post or forward them outside
-  the trusted network. The built-in server uses unencrypted HTTP; it does not provide TLS for
-  notebook traffic or password login. Do not port-forward it to the public internet.
+- Each host process generates separate local administrative and LAN invitation credentials.
+  LAN URLs and QR codes allow profile registration, followed by ordinary profile sessions; they
+  grant no administrative authority. Administrative controls require the host token and a loopback
+  connection. Treat invitation links as credentials and keep them within the trusted network.
+  The built-in server uses unencrypted HTTP; it does not provide TLS for notebook traffic or password login. Do not port-forward it to the public internet.
 - Profile passwords are stored as salted scrypt hashes, while credentials and sessions are kept in
   the ignored `.squillpad-runtime/` directory. Non-secret profile preferences may be stored in
   `profiles/<username>.json` and can be included in GitHub snapshots; do not put secrets there.
+- Logout, password reset, account removal, and session-limit eviction disconnect affected live
+  collaboration sockets. Unrelated sessions remain connected.
 - Browser offline state and connected clients may retain notebook data after a host is stopped or a
   profile is removed. Stopping the host does not revoke copies already downloaded to a device.
 - GitHub synchronization is host-only. It relies on Git, SSH, HTTPS, or an operating-system

@@ -171,7 +171,7 @@ export function ConnectionScreen({
                 id="account-password"
                 type="password"
                 autoComplete={
-                  authenticationStatus?.hostAuthorized ? "new-password" : "current-password"
+                  authenticationStatus?.canRegister ? "new-password" : "current-password"
                 }
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
@@ -180,7 +180,7 @@ export function ConnectionScreen({
               <button type="submit" disabled={busy || username.length < 3 || password.length === 0}>
                 Sign in
               </button>
-              {authenticationStatus?.hostAuthorized && authenticationStatus.canRegister && (
+              {authenticationStatus?.canRegister && (
                 <button
                   type="button"
                   disabled={busy || username.length < 3 || password.length === 0}

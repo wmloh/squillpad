@@ -181,12 +181,12 @@ export async function startHostService(options: HostServiceOptions = {}): Promis
 
     let sharingTransition: Promise<void> = Promise.resolve();
     const makeConnections = async (connectionPort: number): Promise<readonly HostConnection[]> => {
-      if (token === undefined) return [];
+      if (authentication === undefined) return [];
       const connections = await Promise.all(
         discoverLanAddresses().map(async (host) => {
           const connectionOrigin = `http://${host}:${connectionPort}`;
           if (!allowedOrigins.includes(connectionOrigin)) allowedOrigins.push(connectionOrigin);
-          const url = `${connectionOrigin}/#access_token=${token}`;
+          const url = `${connectionOrigin}/#access_token=${authentication.invitationToken}`;
           return {
             url,
             qr: await QRCode.toDataURL(url, { errorCorrectionLevel: "M", margin: 4 }),
