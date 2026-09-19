@@ -17,6 +17,8 @@ export const DEFAULT_INK_STYLE: InkStyle = {
   smoothing: 0.65,
 };
 
+const ROUND_CAP_SEGMENTS = 8;
+
 /** Minimal browser pointer data needed by the device-independent ink engine. */
 export interface InkPointerSample {
   readonly clientX: number;
@@ -123,7 +125,8 @@ export function strokeOutline(
     left.push({ x: point[0] + normal.x * radius, y: point[1] + normal.y * radius });
     right.push({ x: point[0] - normal.x * radius, y: point[1] - normal.y * radius });
   });
-  return [...left, ...right.reverse()];
+  if (highlighter) return [...left, ...right.reverse()];
+  return roundCappedOutline(smoothed, left, right, width / 2);
 }
 
 const renderedInkPathCache = new WeakMap<InkCanvasRecord, { key: string; path: string }>();
@@ -163,14 +166,16 @@ export function outlineToSvgPath(outline: readonly Point[]): string {
   if (outline.length === 0) return "";
   const first = outline[0] as Point;
   if (outline.length === 1) return `M ${format(first.x)} ${format(first.y)} Z`;
-  let path = `M ${format(first.x)} ${format(first.y)}`;
-  for (let index = 1; index < outline.length; index += 1) {
-    const point = outline[index] as Point;
+  const second = outline[1] as Point;
+  const start = midpoint(first, second);
+  let path = `M ${format(start.x)} ${format(start.y)}`;
+  for (let index = 1; index <= outline.length; index += 1) {
+    const point = outline[index % outline.length] as Point;
     const next = outline[(index + 1) % outline.length] as Point;
-    path += ` Q ${format(point.x)} ${format(point.y)} ${format((point.x + next.x) / 2)} ${format((point.y + next.y) / 2)}`;
+    const end = midpoint(point, next);
+    path += ` Q ${format(point.x)} ${format(point.y)} ${format(end.x)} ${format(end.y)}`;
   }
-  path += ` Q ${format(first.x)} ${format(first.y)} ${format(first.x)} ${format(first.y)} Z`;
-  return path;
+  return `${path} Z`;
 }
 
 function smoothPoints(points: readonly InkPoint[], smoothing: number): readonly InkPoint[] {
@@ -240,6 +245,49 @@ function highlighterPointOutline(point: InkPoint, height: number): readonly Poin
   ];
 }
 
+function roundCappedOutline(
+  centerline: readonly InkPoint[],
+  left: readonly Point[],
+  right: readonly Point[],
+  radius: number,
+): readonly Point[] {
+  const start = centerline[0] as InkPoint;
+  const end = centerline[centerline.length - 1] as InkPoint;
+  const startDirection = unitTangent(centerline, 0);
+  const endDirection = unitTangent(centerline, centerline.length - 1);
+  const startNormal = { x: -startDirection.y, y: startDirection.x };
+  const endNormal = { x: -endDirection.y, y: endDirection.x };
+  const outline = [...left];
+
+  for (let index = 1; index <= ROUND_CAP_SEGMENTS; index += 1) {
+    const angle = (index / ROUND_CAP_SEGMENTS) * Math.PI;
+    outline.push({
+      x: end[0] + (endNormal.x * Math.cos(angle) + endDirection.x * Math.sin(angle)) * radius,
+      y: end[1] + (endNormal.y * Math.cos(angle) + endDirection.y * Math.sin(angle)) * radius,
+    });
+  }
+
+  outline.push(...[...right].reverse().slice(1));
+  for (let index = 1; index < ROUND_CAP_SEGMENTS; index += 1) {
+    const angle = (index / ROUND_CAP_SEGMENTS) * Math.PI;
+    outline.push({
+      x:
+        start[0] +
+        (-startNormal.x * Math.cos(angle) - startDirection.x * Math.sin(angle)) * radius,
+      y:
+        start[1] +
+        (-startNormal.y * Math.cos(angle) - startDirection.y * Math.sin(angle)) * radius,
+    });
+  }
+  return outline;
+}
+
+function unitTangent(points: readonly InkPoint[], index: number): Point {
+  const tangent = pointTangent(points, index);
+  const length = Math.hypot(tangent.x, tangent.y) || 1;
+  return { x: tangent.x / length, y: tangent.y / length };
+}
+
 function projectionRatio(point: Point, start: Point, end: Point): number {
   const dx = end.x - start.x;
   const dy = end.y - start.y;
@@ -257,6 +305,10 @@ function pointSegmentDistance(point: Point, start: Point, end: Point): number {
     point.x - (start.x + (end.x - start.x) * ratio),
     point.y - (start.y + (end.y - start.y) * ratio),
   );
+}
+
+function midpoint(left: Point, right: Point): Point {
+  return { x: (left.x + right.x) / 2, y: (left.y + right.y) / 2 };
 }
 
 function format(value: number): string {

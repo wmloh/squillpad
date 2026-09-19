@@ -647,6 +647,16 @@ describe("App", () => {
 
       localStorage.setItem(
         DRAWING_PREFERENCES_KEY,
+        JSON.stringify({ ...DEFAULT_DRAWING_PREFERENCES, lastTool: "eraser" }),
+      );
+      const eraser = renderToStaticMarkup(<SpatialCanvas pageId={PAGE_ID} />);
+      expect(eraser).toContain('aria-label="Eraser thickness"');
+      expect(eraser).toContain('min="2"');
+      expect(eraser).toContain('max="30"');
+      expect(eraser).toContain('step="1"');
+
+      localStorage.setItem(
+        DRAWING_PREFERENCES_KEY,
         JSON.stringify({ ...DEFAULT_DRAWING_PREFERENCES, lastTool: "rectangle" }),
       );
       const shape = renderToStaticMarkup(<SpatialCanvas pageId={PAGE_ID} />);

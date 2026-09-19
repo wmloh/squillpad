@@ -68,11 +68,13 @@ describe("drawing preferences", () => {
       ...DEFAULT_DRAWING_PREFERENCES,
       pen: { ...DEFAULT_DRAWING_PREFERENCES.pen, width: 90.4 },
       highlighter: { ...DEFAULT_DRAWING_PREFERENCES.highlighter, width: 90.4 },
+      eraserWidth: 90.4,
       shape: { ...DEFAULT_DRAWING_PREFERENCES.shape, strokeWidth: 90.4 },
     });
     const preferences = loadDrawingPreferences({ getItem: () => stored });
     expect(preferences.pen.width).toBe(INK_WIDTH_MAX);
     expect(preferences.highlighter.width).toBe(HIGHLIGHTER_WIDTH_MAX);
+    expect(preferences.eraserWidth).toBe(INK_WIDTH_MAX);
     expect(preferences.shape.strokeWidth).toBe(SHAPE_WIDTH_MAX);
     expect(INK_WIDTH_MIN).toBe(2);
     expect(HIGHLIGHTER_WIDTH_MIN).toBe(10);

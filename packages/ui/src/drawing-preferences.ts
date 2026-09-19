@@ -180,7 +180,7 @@ function loadStoredDrawingPreferences(
           ? value.radialToolbarEnabled
           : DEFAULT_DRAWING_PREFERENCES.radialToolbarEnabled,
       eraserMode: value.eraserMode === "segment" ? "segment" : "stroke",
-      eraserWidth: positive(value.eraserWidth, DEFAULT_DRAWING_PREFERENCES.eraserWidth),
+      eraserWidth: inkWidth(value.eraserWidth, DEFAULT_DRAWING_PREFERENCES.eraserWidth, false),
       shape: shapeStyle(value.shape, DEFAULT_DRAWING_PREFERENCES.shape),
     };
   } catch {
@@ -286,10 +286,6 @@ function shapeStyle(value: unknown, fallback: ShapeStyle): ShapeStyle {
     fillColor: optionalHexColor(value.fillColor, fallback.fillColor),
     opacity: unit(value.opacity, fallback.opacity),
   };
-}
-
-function positive(value: unknown, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
 function inkWidth(value: unknown, fallback: number, highlighter: boolean): number {

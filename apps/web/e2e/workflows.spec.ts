@@ -30,6 +30,25 @@ async function cameraPosition(canvas: Locator): Promise<{ x: number; y: number }
   });
 }
 
+test("renders a near-stationary pen stroke with complete round caps", async ({ page }) => {
+  await page.goto("/");
+  const canvas = await openFreshPage(page);
+  const bounds = await canvas.boundingBox();
+  if (bounds === null) throw new Error("Canvas bounds are unavailable");
+
+  await page.getByRole("button", { name: "Pen", exact: true }).click();
+  await page.mouse.move(bounds.x + 240, bounds.y + 180);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + 241, bounds.y + 180);
+  await page.mouse.up();
+
+  const path = page.locator(".canvas-element.kind-ink .canvas-vector path");
+  await expect(path).toHaveCount(1);
+  const data = await path.getAttribute("d");
+  expect(data).toContain("Q 5 2");
+  expect(data).toContain("Q 0 2");
+});
+
 test("temporarily pans with Space from another canvas tool", async ({ page }) => {
   await page.goto("/");
   const canvas = await openFreshPage(page);
@@ -340,14 +359,19 @@ test("creates and reopens a complete mixed page workflow", async ({ page }) => {
   await expect(shape).toHaveCount(0);
 
   const ink = page.locator(".kind-ink");
-  const inkBounds = await ink.boundingBox();
-  if (inkBounds === null) throw new Error("Ink bounds are unavailable");
   await page.getByRole("button", { name: "Erase", exact: true }).click();
-  await page.mouse.move(inkBounds.x + inkBounds.width / 2, inkBounds.y - 12);
+  const eraserInkBounds = await ink.boundingBox();
+  if (eraserInkBounds === null) throw new Error("Ink bounds are unavailable after selecting Erase");
+  await page.mouse.move(
+    eraserInkBounds.x + eraserInkBounds.width / 2,
+    eraserInkBounds.y - 12,
+  );
   await page.mouse.down();
-  await page.mouse.move(inkBounds.x + inkBounds.width / 2, inkBounds.y + inkBounds.height + 12, {
-    steps: 8,
-  });
+  await page.mouse.move(
+    eraserInkBounds.x + eraserInkBounds.width / 2,
+    eraserInkBounds.y + eraserInkBounds.height + 12,
+    { steps: 8 },
+  );
   const eraserTrace = page.locator(".canvas-eraser-trace");
   await expect(eraserTrace).toBeVisible();
   const traceZIndex = Number(
@@ -704,6 +728,30 @@ test("keeps controls and toolbar labels out of text selection", async ({ page })
   expect(searchStyle.webkitUserSelect).not.toBe("none");
 });
 
+test("keeps pen and eraser thickness preferences independent", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByLabel("Infinite page canvas")).toBeVisible();
+
+  await page.getByRole("button", { name: "Pen", exact: true }).click();
+  const penThickness = page.getByLabel("Ink thickness", { exact: true });
+  await penThickness.fill("30");
+  await expect(penThickness).toHaveValue("30");
+
+  await page.getByRole("button", { name: "Erase", exact: true }).click();
+  const eraserThickness = page.getByLabel("Eraser thickness", { exact: true });
+  await expect(eraserThickness).toHaveAttribute("min", "2");
+  await expect(eraserThickness).toHaveAttribute("max", "30");
+  await expect(eraserThickness).toHaveAttribute("step", "1");
+  await expect(eraserThickness).toHaveValue("14");
+  await eraserThickness.fill("6");
+  await expect(eraserThickness).toHaveValue("6");
+
+  await page.getByRole("button", { name: "Pen", exact: true }).click();
+  await expect(page.getByLabel("Ink thickness", { exact: true })).toHaveValue("30");
+  await page.getByRole("button", { name: "Erase", exact: true }).click();
+  await expect(page.getByLabel("Eraser thickness", { exact: true })).toHaveValue("6");
+});
+
 test("does not select settings contents when the menu is reopened quickly", async ({ page }) => {
   await page.goto("/");
   const summary = page.locator(".section-settings > summary");
@@ -819,10 +867,10 @@ test("opens the full guide in a new tab from settings", async ({ page }) => {
   const guidePage = await guidePagePromise;
   try {
     await guidePage.waitForLoadState("domcontentloaded");
-    await expect(guidePage).toHaveTitle("SquillPad — Getting started");
+    await expect(guidePage).toHaveTitle("SquillPad — Guide");
     await expect(
       guidePage.getByRole("heading", {
-        name: "Draw, write, and keep your ideas together.",
+        name: "Keep words, sketches, and teamwork in one place.",
         exact: true,
       }),
     ).toBeVisible();
@@ -1139,7 +1187,6 @@ test("moves pages from page actions and by dragging onto a section", async ({ pa
   await expect(sectionItems).toHaveCount(2);
   const targetSection = sectionItems.nth(1);
   const targetSectionId = await targetSection.getAttribute("data-reorder-id");
-  const targetSectionTitle = await targetSection.locator(".section-select").innerText();
   if (targetSectionId === null) throw new Error("Target section identity is unavailable");
 
   await sourceSection.locator(".section-select").click();
@@ -1181,15 +1228,14 @@ test("moves pages from page actions and by dragging onto a section", async ({ pa
   await expect(moveMenu).toBeVisible();
   await expect(moveMenu).toHaveAttribute("data-page-move-menu-phase", "open");
   await expect(moveMenu).toHaveAttribute("data-page-move-menu-side", "right");
-  await expect(
-    moveMenu.getByRole("menuitem", { name: targetSectionTitle, exact: true }),
-  ).toBeVisible();
+  const targetMoveItem = moveMenu.locator(`[data-section-id="${targetSectionId}"]`);
+  await expect(targetMoveItem).toBeVisible();
   await pageMenu.getByRole("menuitem", { name: "Copy page", exact: true }).hover();
   await expect(moveMenu).toHaveCount(0);
   await moveTrigger.hover();
   await expect(moveMenu).toHaveAttribute("data-page-move-menu-phase", "open");
   await page.screenshot({ path: "test-results/navigation-page-move-light.png" });
-  await moveMenu.getByRole("menuitem", { name: targetSectionTitle, exact: true }).click();
+  await targetMoveItem.click();
 
   await expect(pageMenu).toHaveCount(0);
   await expect(targetSection).toHaveClass(/is-active/);

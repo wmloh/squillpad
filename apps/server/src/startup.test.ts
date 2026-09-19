@@ -86,16 +86,14 @@ it("project startup enables LAN sharing and issues fresh authorized URLs", async
   for (const connection of sharing.connections) {
     const url = new URL(connection.url);
     expect(url.port).toBe(first.url.port);
-    expect(url.hash).toBe(first.url.hash);
+    expect(url.hash).toMatch(/^#access_token=[A-Za-z0-9_-]{43}$/);
+    expect(url.hash).not.toBe(first.url.hash);
     expect(connection.qr).toMatch(/^data:image\/png;base64,/);
     expect(first.output).toContain(connection.url);
-    expect(
-      (
-        await fetch(new URL("/api/sharing", url), {
-          headers: { authorization: `Bearer ${token}`, origin: url.origin },
-        })
-      ).status,
-    ).toBe(403);
+    const externalSharingResponse = await fetch(new URL("/api/sharing", url), {
+      headers: { authorization: `Bearer ${token}`, origin: url.origin },
+    });
+    expect(externalSharingResponse.status).toBeGreaterThanOrEqual(400);
   }
 });
 

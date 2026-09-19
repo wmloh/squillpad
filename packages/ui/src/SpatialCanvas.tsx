@@ -292,7 +292,7 @@ interface PendingRadialHold {
 
 const CULLING_MARGIN_SCREEN_PX = 320;
 const MAX_LASER_TRACE_POINTS = 4096;
-const KEYBOARD_PAN_SPEED_PX_PER_SECOND = 240;
+const KEYBOARD_PAN_SPEED_PX_PER_SECOND = 960;
 const ELEMENT_DRAG_THRESHOLD_SCREEN_PX = 4;
 
 /** World-space canvas with editing controls or a read-only pan and zoom surface. */
@@ -417,6 +417,7 @@ function SpatialCanvasImpl(
   );
   const preferencesRef = useRef(preferences);
   preferencesRef.current = preferences;
+  const effectiveEraserWidth = clampInkWidth(preferences.eraserWidth, false);
   const lastControlledDrawingPreferencesRef = useRef(controlledDrawingPreferences);
   const updatePreferences = useCallback(
     (update: (current: DrawingPreferences) => DrawingPreferences) => {
@@ -2380,11 +2381,12 @@ function SpatialCanvasImpl(
           eraseElements(
             elementsRef.current,
             points,
-            preferences.eraserWidth / 2,
+            effectiveEraserWidth / 2,
             preferences.eraserMode,
           ),
         );
         setSelectedIds(new Set());
+        endNavigationPointer(event);
       } else {
         const lassoSelection = lassoSelectElements(elementsRef.current, points);
         const lassoIds = expandLassoSelection(elementsRef.current, lassoSelection);
@@ -3385,6 +3387,7 @@ function SpatialCanvasImpl(
           inkWidthForControls={inkWidthForControls}
           inkDimensionLabel={inkDimensionLabel}
           inkDimensionAriaLabel={inkDimensionAriaLabel}
+          eraserWidthForControls={effectiveEraserWidth}
           hasGroupedSelection={hasGroupedSelection}
           markdownColorStyles={effectiveMarkdownColorStyles}
           markdownSearchControlled={controlledMarkdownSearchQuery !== undefined}
@@ -3622,7 +3625,7 @@ function SpatialCanvasImpl(
               stroke="var(--app-accent)"
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth={preferences.eraserWidth}
+              strokeWidth={effectiveEraserWidth}
             />
           </svg>
         )}
@@ -3634,7 +3637,7 @@ function SpatialCanvasImpl(
             visible={cursorVisible}
             zoom={camera.zoom}
             zIndex={laserZIndex + 1}
-            eraserWidth={preferences.eraserWidth}
+            eraserWidth={effectiveEraserWidth}
           />
         )}
         {palmRejectionActive && (

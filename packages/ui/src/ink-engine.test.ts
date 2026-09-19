@@ -40,7 +40,7 @@ describe("ink engine", () => {
     ] as const;
     const outline = strokeOutline(points, 8);
     const path = outlineToSvgPath(outline);
-    expect(outline).toHaveLength(6);
+    expect(outline).toHaveLength(20);
     const smoothedCenter = { x: 10, y: (5 / 3) * 0.65 };
     expect(
       Math.hypot((outline[1]?.x ?? 0) - smoothedCenter.x, (outline[1]?.y ?? 0) - smoothedCenter.y),
@@ -66,8 +66,38 @@ describe("ink engine", () => {
 
   it("renders a single accepted sample as a vector dot", () => {
     const outline = strokeOutline([[3, 4]], 4);
+    const first = outline[0]!;
+    const second = outline[1]!;
+    const seamX = (first.x + second.x) / 2;
+    const seamY = (first.y + second.y) / 2;
+    const path = outlineToSvgPath(outline);
+    const coordinates = path.match(/-?\d+(?:\.\d+)?/g)?.map(Number) ?? [];
+
     expect(outline).toHaveLength(12);
-    expect(outlineToSvgPath(outline)).toContain(" Z");
+    expect(coordinates[0]).toBeCloseTo(seamX, 3);
+    expect(coordinates[1]).toBeCloseTo(seamY, 3);
+    expect(coordinates.at(-2)).toBe(coordinates[0]);
+    expect(coordinates.at(-1)).toBe(coordinates[1]);
+    expect(path.match(/ Q /g)).toHaveLength(outline.length);
+  });
+
+  it("gives a near-stationary stroke complete round caps", () => {
+    const outline = strokeOutline(
+      [
+        [0, 0],
+        [0.001, 0],
+      ],
+      4,
+    );
+    const path = outlineToSvgPath(outline);
+    const xValues = outline.map((point) => point.x);
+    const yValues = outline.map((point) => point.y);
+
+    expect(Math.min(...xValues)).toBeCloseTo(-2);
+    expect(Math.max(...xValues)).toBeCloseTo(2.001);
+    expect(Math.min(...yValues)).toBeCloseTo(-2);
+    expect(Math.max(...yValues)).toBeCloseTo(2);
+    expect(path).toContain(" Z");
   });
 
   it("renders a single highlighter sample as a thin vertical mark", () => {
