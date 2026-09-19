@@ -27,7 +27,7 @@ SquillPad is currently run from this repository; it does not include a separate 
 
 You need:
 
-- Node.js 22.12 or newer. The included `.nvmrc` pins Node.js 24.20.0.
+- Node.js 22.12 or newer. CI uses Node.js 24.20.0.
 - pnpm 11. The repository package manager is pnpm 11.25.0.
 - Bash for the included scripts (Windows users can use WSL or Git Bash).
 - A recent Chromium browser. Firefox and Safari/WebKit should work, but are not thoroughly tested.

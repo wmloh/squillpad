@@ -7,8 +7,8 @@ may be the most practical option.
 
 ## Local setup
 
-The repository uses a pnpm workspace. Use Node.js 22.12 or newer and pnpm 11; the checkout pins
-Node.js 24.20.0 in `.nvmrc` and pnpm 11.25.0 in `package.json`.
+The repository uses a pnpm workspace. Use Node.js 22.12 or newer and pnpm 11; CI uses Node.js
+24.20.0 and the repository declares pnpm 11.25.0 in `package.json`.
 
 ```sh
 pnpm install
