@@ -6,6 +6,7 @@ export * from "./markdown-interoperability.js";
 export * from "./profile-preferences.js";
 export * from "./profile-settings.js";
 export * from "./project-preferences.js";
+export * from "./project-settings.js";
 
 /** A position in the shared page world coordinate system. */
 export interface WorldPoint {

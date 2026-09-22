@@ -18,6 +18,7 @@ describe("profile settings format", () => {
     const exported = createProfileSettingsExport(DEFAULT_PROFILE_SETTINGS);
     expect(isProfileSettingsExport(exported)).toBe(true);
     expect(exported).not.toHaveProperty("username");
+    expect(exported).not.toHaveProperty("markdownColorStyles");
   });
 
   it("rejects credential-like fields in an export document", () => {

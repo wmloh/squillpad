@@ -4,6 +4,7 @@ import { extname, resolve, sep } from "node:path";
 
 import {
   CORE_MODEL_VERSION,
+  createProjectSettingsExport,
   isAutosaveIntervalSeconds,
   MARKDOWN_FONT_SIZE_MAX,
   MARKDOWN_FONT_SIZE_MIN,
@@ -13,6 +14,7 @@ import {
   isProfileDrawingPalettes,
   isProfileSettings,
   isProfileSettingsExport,
+  isProjectSettingsExport,
   isSectionColor,
   isSynchronizedInkColors,
   type CanvasRecord,
@@ -24,6 +26,7 @@ import {
   type ProfileDrawingPalettes,
   type ProfileSettings,
   type ProfileSettingsExport,
+  type ProjectSettingsExport,
   type SynchronizedInkColors,
 } from "@squillpad/core-model";
 import {
@@ -125,6 +128,22 @@ export function createHostServer(options: HostServerOptions = {}): Server {
     }
     if (request.url?.startsWith("/api/profile/")) {
       void handleProfileSettingsRequest(request, response, options.authentication);
+      return;
+    }
+    if (request.url?.startsWith("/api/project/settings")) {
+      if (options.repositorySynchronization?.mutationActive === true) {
+        sendJson(response, 409, {
+          error: "Repository snapshot operation in progress; retry shortly",
+        });
+        return;
+      }
+      void handleProjectSettingsRequest(
+        request,
+        response,
+        options.hierarchy,
+        options.authentication,
+        options.onHierarchyMutation,
+      );
       return;
     }
     if (request.url === "/api/host/stop") {
@@ -739,6 +758,42 @@ async function handleProfileSettingsRequest(
   }
 }
 
+async function handleProjectSettingsRequest(
+  request: IncomingMessage,
+  response: ServerResponse,
+  hierarchy: ProjectHierarchyService | undefined,
+  authentication: AuthenticationService | undefined,
+  onHierarchyMutation:
+    | ((action: string, hierarchy: NotebookHierarchy) => Promise<void> | void)
+    | undefined,
+): Promise<void> {
+  if (hierarchy === undefined) {
+    sendJson(response, 503, { error: "No project is open" });
+    return;
+  }
+  try {
+    requireProjectSettingsHostAuthorization(authentication, request);
+    if (request.method === "GET" && request.url === "/api/project/settings/export") {
+      const current = await hierarchy.load();
+      sendJson(response, 200, createProjectSettingsExport(current.notebook.settings));
+      return;
+    }
+    if (request.method === "POST" && request.url === "/api/project/settings/import") {
+      const body = await readJsonObject(request, 256 * 1024);
+      const exported = requiredProjectSettingsExport(body);
+      const next = await hierarchy.importProjectSettings(exported.settings);
+      await onHierarchyMutation?.("import-project-settings", next);
+      sendJson(response, 200, next);
+      return;
+    }
+    sendJson(response, 404, { error: "Not found" });
+  } catch (error) {
+    sendJson(response, error instanceof AuthenticationError ? error.status : 400, {
+      error: errorMessage(error),
+    });
+  }
+}
+
 function profileSettingsErrorStatus(error: unknown): number {
   if (error instanceof AuthenticationError) return error.status;
   return errorMessage(error).includes("Repository snapshot operation") ? 409 : 400;
@@ -757,6 +812,19 @@ function requireHostAuthorization(
 ): void {
   if (!authentication.isHostRequest(request)) {
     throw new AuthenticationError(403, "The current host access token is required");
+  }
+}
+
+function requireProjectSettingsHostAuthorization(
+  authentication: AuthenticationService | undefined,
+  request: IncomingMessage,
+): void {
+  if (authentication !== undefined) {
+    requireLocalHostAuthorization(authentication, request);
+    return;
+  }
+  if (!isLoopbackAddress(request.socket.remoteAddress)) {
+    throw new AuthenticationError(403, "Project settings are available only on the host");
   }
 }
 
@@ -1189,6 +1257,13 @@ function requiredProfileSettings(body: Record<string, unknown>): ProfileSettings
 function requiredProfileSettingsExport(body: Record<string, unknown>): ProfileSettingsExport {
   if (!isProfileSettingsExport(body.export)) {
     throw new Error("export is not a valid SquillPad profile-settings file");
+  }
+  return body.export;
+}
+
+function requiredProjectSettingsExport(body: Record<string, unknown>): ProjectSettingsExport {
+  if (!isProjectSettingsExport(body.export)) {
+    throw new Error("export is not a valid SquillPad project-settings file");
   }
   return body.export;
 }

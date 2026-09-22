@@ -20,6 +20,7 @@ import {
   SYNCHRONIZED_INK_COLORS_METADATA_KEY,
   AUTOSAVE_INTERVAL_SECONDS_METADATA_KEY,
   LAN_SHARING_DEFAULT_METADATA_KEY,
+  type MarkdownColors,
 } from "@squillpad/core-model";
 
 import { createHostServer } from "./app.js";
@@ -511,6 +512,99 @@ describe("host server", () => {
         })
       ).status,
     ).toBe(403);
+  });
+
+  it("exports and imports project settings only for the host without hierarchy data", async () => {
+    const root = join(await mkdtemp(join(tmpdir(), "squillpad-server-")), "project");
+    const session = await createProject(root);
+    sessions.add(session);
+    const hierarchy = new ProjectHierarchyService(session);
+    const colors = Object.fromEntries(
+      MARKDOWN_COLOR_KEYS.map((key) => [key, { light: "#123456", dark: "#654321" }]),
+    ) as MarkdownColors;
+    await hierarchy.updateMarkdownColorStyles({
+      styles: [{ id: MARKDOWN_ID, name: "Lecture", colors }],
+    });
+    const token = "q".repeat(43);
+    const authentication = await AuthenticationService.open(root, token);
+    const mutations: string[] = [];
+    const server = createHostServer({
+      authentication,
+      hierarchy,
+      onHierarchyMutation: (action) => {
+        mutations.push(action);
+      },
+    });
+    servers.add(server);
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const address = server.address();
+    if (address === null || typeof address === "string") throw new Error("Missing server address");
+    const base = `http://127.0.0.1:${address.port}`;
+    const registered = await fetch(`${base}/api/auth/register`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ username: "project-reader", password: "a secure passphrase" }),
+    });
+    const cookie = registered.headers.get("set-cookie")?.split(";")[0];
+    expect(cookie).toBeDefined();
+
+    expect(
+      (await fetch(`${base}/api/project/settings/export`, { headers: { cookie: cookie! } })).status,
+    ).toBe(403);
+
+    const exportedResponse = await fetch(`${base}/api/project/settings/export`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(exportedResponse.status).toBe(200);
+    const exported = (await exportedResponse.json()) as Record<string, unknown>;
+    expect(exported).toMatchObject({
+      format: "squillpad-project-settings",
+      schemaVersion: 1,
+      settings: {
+        markdownColorStyles: { styles: [{ id: MARKDOWN_ID, name: "Lecture" }] },
+      },
+    });
+    expect(exported).not.toHaveProperty("projectId");
+    expect(exported).not.toHaveProperty("title");
+    expect(JSON.stringify(exported)).not.toContain("sectionIds");
+
+    const importedColors = Object.fromEntries(
+      MARKDOWN_COLOR_KEYS.map((key) => [key, { light: "#abcdef", dark: "#fedcba" }]),
+    );
+    const imported = structuredClone(exported) as {
+      settings: Record<string, unknown>;
+    };
+    imported.settings.defaultZoom = 1.5;
+    imported.settings.markdownColorStyles = {
+      defaultStyleId: "423e4567-e89b-42d3-a456-426614174003",
+      styles: [
+        {
+          id: "423e4567-e89b-42d3-a456-426614174003",
+          name: "Lecture",
+          colors: importedColors,
+        },
+      ],
+    };
+    const importedResponse = await fetch(`${base}/api/project/settings/import`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ export: imported }),
+    });
+    expect(importedResponse.status).toBe(200);
+    expect(await importedResponse.json()).toMatchObject({
+      notebook: {
+        settings: {
+          defaultZoom: 1.5,
+          metadata: {
+            [MARKDOWN_COLOR_STYLES_METADATA_KEY]: {
+              defaultStyleId: MARKDOWN_ID,
+              styles: [{ id: MARKDOWN_ID, name: "Lecture", colors: importedColors }],
+            },
+          },
+        },
+      },
+    });
+    expect(mutations).toContain("import-project-settings");
   });
 
   it("returns authenticated project presence with observed addresses and explicit removal", async () => {

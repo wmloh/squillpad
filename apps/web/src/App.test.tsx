@@ -6,6 +6,9 @@ import { EditorView } from "@codemirror/view";
 
 import {
   CANONICAL_SCHEMA_VERSION,
+  DEFAULT_AUTOSAVE_INTERVAL_SECONDS,
+  DEFAULT_LASER_POINTER_SETTINGS,
+  DEFAULT_MARKDOWN_BOX_APPEARANCE,
   MARKDOWN_COLOR_KEYS,
   type CanvasElement,
   type NotebookHierarchy,
@@ -39,6 +42,7 @@ import {
   synchronizationStatusTooltip,
 } from "./App";
 import { AppChrome, type AppChromeProps } from "./AppChrome";
+import { AppSettings, type AppSettingsProps } from "./AppSettings";
 import { ConnectionScreen } from "./ConnectionScreen";
 import type { RepositorySynchronizationHandle } from "./RepositorySynchronization";
 import mathFixture from "./test-fixtures/math.md?raw";
@@ -120,9 +124,56 @@ function appChromeProps(hostSession: boolean): AppChromeProps {
   };
 }
 
+function appSettingsProps(hostSession: boolean): AppSettingsProps {
+  return {
+    detailsRef: createRef<HTMLDetailsElement>(),
+    markdownBoxAppearance: DEFAULT_MARKDOWN_BOX_APPEARANCE,
+    textScalePercent: 100,
+    laserPointerSettings: DEFAULT_LASER_POINTER_SETTINGS,
+    keyboardPanSpeedMultiplier: 1,
+    autosaveIntervalSeconds: DEFAULT_AUTOSAVE_INTERVAL_SECONDS,
+    drawingPreferences: DEFAULT_DRAWING_PREFERENCES,
+    palmRejection: false,
+    canvasToolbarHeightDraft: "44",
+    authenticatedUsername: "owner",
+    applicationPageBackground: "grid",
+    hostSession,
+    clientReadOnly: false,
+    busy: false,
+    profileSettingsImportRef: createRef<HTMLInputElement>(),
+    projectSettingsImportRef: createRef<HTMLInputElement>(),
+    onMarkdownBoxAppearanceChange: () => undefined,
+    onTextScalePercentChange: () => undefined,
+    onLaserPointerSettingsChange: () => undefined,
+    onKeyboardPanSpeedMultiplierChange: () => undefined,
+    onAutosaveIntervalChange: () => undefined,
+    onPenDrawsTouchNavigatesChange: () => undefined,
+    onPalmRejectionChange: () => undefined,
+    onCanvasToolbarHeightDraftChange: () => undefined,
+    onCanvasToolbarHeightCommit: () => undefined,
+    onPageBackgroundChange: () => undefined,
+    onExportProfileSettings: () => undefined,
+    onImportProfileSettings: () => undefined,
+    onExportProjectSettings: () => undefined,
+    onImportProjectSettings: () => undefined,
+  };
+}
+
 describe("App", () => {
   it("is a renderable component", () => {
     expect(typeof App).toBe("function");
+  });
+
+  it("shows project-settings transfer controls only for the host", () => {
+    const hostHtml = renderToStaticMarkup(<AppSettings {...appSettingsProps(true)} />);
+    const clientHtml = renderToStaticMarkup(<AppSettings {...appSettingsProps(false)} />);
+
+    expect(hostHtml).toContain("Project settings");
+    expect(hostHtml).toContain("Export project");
+    expect(hostHtml).toContain("Import project");
+    expect(clientHtml).not.toContain("Project settings");
+    expect(clientHtml).not.toContain("Export project");
+    expect(clientHtml).not.toContain("Import project");
   });
 
   it("renders a dismissible host-stopped notification", () => {

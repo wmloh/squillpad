@@ -812,6 +812,41 @@ test("does not select settings contents when the menu is reopened quickly", asyn
   expect(await page.evaluate(() => window.getSelection()?.toString() ?? "")).toBe("");
 });
 
+test("shows host project-settings controls and imports a portable setting", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".section-settings > summary").click();
+
+  const exportButton = page.getByRole("button", { name: "Export project", exact: true });
+  const importButton = page.getByRole("button", { name: "Import project", exact: true });
+  await expect(exportButton).toBeVisible();
+  await expect(importButton).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await exportButton.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("squillpad-project-settings.json");
+
+  await page.locator('input[type="file"][accept="application/json,.json"]').setInputFiles({
+    name: "project-settings.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        format: "squillpad-project-settings",
+        schemaVersion: 1,
+        settings: { defaultZoom: 1.75 },
+      }),
+    ),
+  });
+
+  await expect
+    .poll(async () => {
+      const response = await page.request.get("/api/project/settings/export");
+      const exported = (await response.json()) as { settings?: { defaultZoom?: number } };
+      return exported.settings?.defaultZoom;
+    })
+    .toBe(1.75);
+});
+
 test("keeps the Settings menu below its trigger and inside a narrow viewport", async ({ page }) => {
   await page.setViewportSize({ width: 240, height: 700 });
   await page.goto("/");
