@@ -61,7 +61,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["apps/web/public/**/*.js"],
+    files: ["apps/web/public/**/*.js", "scripts/project-manager-ui/**/*.js"],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: {
       globals: {
