@@ -244,16 +244,26 @@ async function readJson(request) {
 
 function runCommand(command, args, options = {}) {
   return new Promise((resolveCommand, rejectCommand) => {
+    const pipeOutput =
+      !options.inherit ||
+      options.onStdout !== undefined ||
+      options.onStderr !== undefined;
     const child = spawn(command, args, {
       cwd: repositoryRoot,
-      env: process.env,
-      stdio: options.inherit ? "inherit" : ["ignore", "pipe", "pipe"],
+      env: options.env ?? process.env,
+      stdio: pipeOutput ? ["ignore", "pipe", "pipe"] : "inherit",
     });
     let output = "";
-    if (!options.inherit) {
-      child.stdout?.on("data", (chunk) => (output += chunk.toString()));
-      child.stderr?.on("data", (chunk) => (output += chunk.toString()));
-    }
+    child.stdout?.on("data", (chunk) => {
+      const text = chunk.toString();
+      output += text;
+      options.onStdout?.(text);
+    });
+    child.stderr?.on("data", (chunk) => {
+      const text = chunk.toString();
+      output += text;
+      options.onStderr?.(text);
+    });
     child.once("error", rejectCommand);
     child.once("exit", (code, signal) =>
       resolveCommand({ code, signal, output }),
@@ -311,6 +321,55 @@ async function openBrowser(url) {
     );
   });
   child.unref();
+}
+
+function startProjectLauncher(project, launchPort) {
+  const hostUrlPattern = /SquillPad host:\s+(https?:\/\/\S+)/;
+  let output = "";
+  let hostUrl;
+  let resolveHostUrl;
+  let rejectHostUrl;
+  const hostUrlReady = new Promise((resolve, reject) => {
+    resolveHostUrl = resolve;
+    rejectHostUrl = reject;
+  });
+  const observeOutput = (chunk) => {
+    output += chunk;
+    if (hostUrl !== undefined) return;
+    const match = hostUrlPattern.exec(output);
+    if (match === null) return;
+    hostUrl = match[1];
+    resolveHostUrl(hostUrl);
+  };
+  const command = runCommand(
+    join(launcherDirectory, `${project.id}.sh`),
+    ["--port", String(launchPort.port)],
+    {
+      env: { ...process.env, SQUILLPAD_OPEN_BROWSER: "0" },
+      onStdout: (chunk) => {
+        process.stdout.write(chunk);
+        observeOutput(chunk);
+      },
+      onStderr: (chunk) => {
+        process.stderr.write(chunk);
+        observeOutput(chunk);
+      },
+    },
+  );
+  command
+    .then((result) => {
+      if (hostUrl !== undefined) return;
+      const details = result.output.trim();
+      rejectHostUrl(
+        new Error(
+          details === ""
+            ? "The project launcher exited before reporting its authorized host URL."
+            : `The project launcher did not report its authorized host URL:\n${details}`,
+        ),
+      );
+    })
+    .catch(rejectHostUrl);
+  return { command, hostUrlReady };
 }
 
 export async function startProjectManager({ openBrowserWindow = true } = {}) {
@@ -395,8 +454,19 @@ export async function startProjectManager({ openBrowserWindow = true } = {}) {
           throw new Error(project.problem ?? "Project is unavailable.");
         const launchPort = await chooseLaunchPort(project.defaultPort);
         handoffStarted = true;
-        sendJson(response, 202, { project: project.name, ...launchPort });
-        pendingLaunch = { project, launchPort };
+        const launch = startProjectLauncher(project, launchPort);
+        pendingLaunch = { project, launchPort, command: launch.command };
+        try {
+          const hostUrl = await launch.hostUrlReady;
+          sendJson(response, 202, {
+            project: project.name,
+            ...launchPort,
+            url: hostUrl,
+          });
+        } catch (error) {
+          server.close();
+          throw error;
+        }
         setTimeout(() => server.close(), 350);
         return;
       }
@@ -423,18 +493,10 @@ export async function startProjectManager({ openBrowserWindow = true } = {}) {
 
   await new Promise((resolveClose) => server.once("close", resolveClose));
   if (pendingLaunch !== undefined) {
-    const launcherPath = join(
-      launcherDirectory,
-      `${pendingLaunch.project.id}.sh`,
-    );
     console.log(
       `Opening ${pendingLaunch.project.name} on port ${pendingLaunch.launchPort.port}...`,
     );
-    const result = await runCommand(
-      launcherPath,
-      ["--port", String(pendingLaunch.launchPort.port)],
-      { inherit: true },
-    );
+    const result = await pendingLaunch.command;
     if (result.signal !== null) process.kill(process.pid, result.signal);
     process.exitCode = result.code ?? 1;
   }

@@ -439,9 +439,11 @@ node "$server_entry" "${forwarded_args[@]}" 2>&1 |
     printf '%s\n' "$line"
     if [[ -z "$host_url" && "$line" =~ $host_url_pattern ]]; then
       host_url="${BASH_REMATCH[1]}"
-      printf 'Opening SquillPad in the default browser: %s\n' "$host_url" >&2
-      if ! open_default_browser "$host_url"; then
-        printf 'Open this URL manually: %s\n' "$host_url" >&2
+      if [[ "${SQUILLPAD_OPEN_BROWSER:-1}" == "1" ]]; then
+        printf 'Opening SquillPad in the default browser: %s\n' "$host_url" >&2
+        if ! open_default_browser "$host_url"; then
+          printf 'Open this URL manually: %s\n' "$host_url" >&2
+        fi
       fi
     fi
   done

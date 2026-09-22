@@ -100,6 +100,7 @@ async function openProject(project, button) {
     document
       .querySelectorAll("button, input")
       .forEach((control) => (control.disabled = true));
+    window.location.replace(result.url);
   } catch (error) {
     setNotice(error.message, "error");
     button.disabled = false;

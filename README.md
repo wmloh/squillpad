@@ -51,9 +51,9 @@ Open the local project chooser from the repository root:
 
 The chooser opens only on this host. It lists projects recorded under `launchers/`, reports moved
 or invalid project folders, and can create a project using the same name, directory, and port
-settings as the command-line creation script. Opening a project closes the chooser and hands the
-terminal to that project's launcher. If its saved port is occupied, the chooser selects an
-available port for that run.
+settings as the command-line creation script. Opening a project replaces the chooser in the
+current browser tab and hands the terminal to that project's launcher. If its saved port is
+occupied, the chooser selects an available port for that run.
 
 You can also create a project and its persistent launcher directly from the command line. The
 command below creates a project named `Personal Notes` outside the checkout, uses port `4173`,
