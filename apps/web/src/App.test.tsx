@@ -838,6 +838,37 @@ describe("App", () => {
     expect(html).toContain("markdown-search-match is-active");
   });
 
+  it("refreshes the Markdown preview when source or active search changes", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    try {
+      act(() => {
+        root.render(
+          <MarkdownPreview source="Alpha alpha" searchQuery="alpha" activeSearchMatch={0} />,
+        );
+      });
+      expect(container.querySelector(".markdown-search-match.is-active")?.textContent).toBe(
+        "Alpha",
+      );
+
+      act(() => {
+        root.render(
+          <MarkdownPreview source="Alpha alpha" searchQuery="alpha" activeSearchMatch={1} />,
+        );
+      });
+      expect(container.querySelector(".markdown-search-match.is-active")?.textContent).toBe(
+        "alpha",
+      );
+
+      act(() => {
+        root.render(<MarkdownPreview source="Beta" searchQuery="alpha" />);
+      });
+      expect(container.querySelector(".markdown-content")?.textContent).toBe("Beta");
+    } finally {
+      act(() => root.unmount());
+    }
+  });
+
   it("renders each Markdown hard break inserted for blank space", () => {
     const source = "Start" + ("\\" + "\n").repeat(5) + "\nEnd";
     const html = renderToStaticMarkup(<MarkdownPreview source={source} />);
@@ -965,7 +996,7 @@ describe("App", () => {
     expect(html).not.toContain("Create text box group");
   });
 
-  it("measures intrinsic Markdown content instead of the self-sized block", async () => {
+  it("measures intrinsic Markdown content instead of the self-sized block", () => {
     const testGlobals = globalThis as typeof globalThis & {
       IS_REACT_ACT_ENVIRONMENT?: boolean | undefined;
     };
@@ -980,7 +1011,13 @@ describe("App", () => {
     );
     const observed: Element[] = [];
     const heights: number[] = [];
+    const updatedHeights: number[] = [];
+    let notifyResize: (() => void) | undefined;
     globalThis.ResizeObserver = class {
+      constructor(callback: ResizeObserverCallback) {
+        notifyResize = () => callback([], this as unknown as ResizeObserver);
+      }
+
       observe(target: Element) {
         observed.push(target);
       }
@@ -989,14 +1026,14 @@ describe("App", () => {
     } as unknown as typeof ResizeObserver;
     Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
       configurable: true,
-      get() {
+      get(this: HTMLElement) {
         return this.classList.contains("markdown-content") ? 80 : 100_000;
       },
     });
 
     try {
       document.body.append(container);
-      await act(async () => {
+      act(() => {
         root.render(
           <MarkdownBlock
             boxOpacity={1}
@@ -1013,8 +1050,26 @@ describe("App", () => {
       expect(content).not.toBeNull();
       expect(heights).toEqual([80]);
       expect(observed).toEqual([content]);
+      act(() => {
+        root.render(
+          <MarkdownBlock
+            boxOpacity={1}
+            editing={false}
+            source={"- [ ] a\n  \n- [ ] b"}
+            onChange={() => undefined}
+            onCommit={() => undefined}
+            onFinishEditing={() => undefined}
+            onHeightChange={(height) => updatedHeights.push(height)}
+          />,
+        );
+      });
+      expect(observed).toEqual([content]);
+      expect(heights).toEqual([80]);
+      expect(updatedHeights).toEqual([]);
+      act(() => notifyResize?.());
+      expect(updatedHeights).toEqual([80]);
     } finally {
-      await act(async () => root.unmount());
+      act(() => root.unmount());
       container.remove();
       globalThis.ResizeObserver = resizeObserver;
       if (scrollHeightDescriptor === undefined) {

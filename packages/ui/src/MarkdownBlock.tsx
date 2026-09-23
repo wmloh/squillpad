@@ -20,6 +20,7 @@ import {
 import {
   useEffect,
   useLayoutEffect,
+  memo,
   useRef,
   useState,
   type ComponentProps,
@@ -310,7 +311,7 @@ export interface MarkdownPreviewProps {
   readonly source: string;
 }
 
-export function MarkdownPreview({
+export const MarkdownPreview = memo(function MarkdownPreview({
   activeSearchMatch,
   contentRef,
   searchMatchOffset = 0,
@@ -348,7 +349,7 @@ export function MarkdownPreview({
       )}
     </div>
   );
-}
+});
 
 function createMarkdownSearchPlugin(
   query: string,
@@ -480,6 +481,8 @@ export function MarkdownBlock({
   const blockRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const onHeightChangeRef = useRef(onHeightChange);
+  onHeightChangeRef.current = onHeightChange;
   const [editorPhase, setEditorPhase] = useState<MarkdownEditorPhase>(
     editing ? "opening" : "closed",
   );
@@ -521,13 +524,13 @@ export function MarkdownBlock({
         verticalPadding,
         verticalBorder,
       );
-      if (height !== undefined) onHeightChange(height);
+      if (height !== undefined) onHeightChangeRef.current(height);
     };
     report();
     const observer = new ResizeObserver(report);
     observer.observe(content);
     return () => observer.disconnect();
-  }, [editing, fontSize, onHeightChange, source]);
+  }, [editing, fontSize, source]);
 
   useLayoutEffect(() => {
     if (editorPhase === "closed") return;

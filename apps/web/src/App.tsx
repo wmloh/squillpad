@@ -118,6 +118,26 @@ const SYNCHRONIZATION_STATUS_POSSIBILITIES =
   "Connecting, Synchronized, Offline — editing locally, Synchronization error, Host disconnected, Project reloaded, Host stopped";
 let nextPictureInPictureId = 0;
 
+function sameSaveStatuses(
+  current: Readonly<Record<string, SaveSnapshot>>,
+  next: Readonly<Record<string, SaveSnapshot>>,
+): boolean {
+  const currentKeys = Object.keys(current);
+  if (currentKeys.length !== Object.keys(next).length) return false;
+  return currentKeys.every((key) => {
+    const before = current[key];
+    const after = next[key];
+    return (
+      before !== undefined &&
+      after !== undefined &&
+      before.status === after.status &&
+      before.revision === after.revision &&
+      before.dirty === after.dirty &&
+      before.error === after.error
+    );
+  });
+}
+
 type PendingDeletion =
   | {
       readonly kind: "section";
@@ -994,7 +1014,10 @@ export function App() {
         const status = await requestJson<SynchronizationStatusResponse>("/api/sync/status", {
           method: "GET",
         });
-        if (!cancelled) setSaveStatuses(status.canonical ?? {});
+        if (!cancelled) {
+          const next = status.canonical ?? {};
+          setSaveStatuses((current) => (sameSaveStatuses(current, next) ? current : next));
+        }
       } catch {
         // Network synchronization status remains available when this auxiliary request fails.
       }
