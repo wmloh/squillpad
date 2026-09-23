@@ -792,12 +792,12 @@ describe("App", () => {
       />,
     );
 
-    expect(html).toContain("<h1>Heading</h1>");
+    expect(html).toContain('<h1 data-markdown-source-end="9">Heading</h1>');
     expect(html).toContain("<em>emphasis</em>");
-    expect(html).toContain("<blockquote>");
+    expect(html).toContain('<blockquote data-markdown-source-end="30">');
     expect(html).toContain("<ul>");
     expect(html).toContain('href="https://example.com/"');
-    expect(html).toMatch(/<code class="[^"]*hljs[^"]*language-ts[^"]*">/);
+    expect(html).toMatch(/<code class="[^"]*hljs[^"]*language-ts[^"]*" data-markdown-source-end="\d+">/);
     expect(html).toContain('<span class="hljs-keyword">const</span>');
     expect(html).toContain("<table>");
   });
@@ -817,7 +817,7 @@ describe("App", () => {
       />,
     );
 
-    expect(html).toContain('<h1 id="custom-id">Heading</h1>');
+    expect(html).toContain('<h1 id="custom-id" data-markdown-source-end="22">Heading</h1>');
     expect(html).toContain('<mark class="markdown-highlight">Important</mark>');
     expect(html).toContain('class="footnotes"');
     expect(html).toContain("Footnote text");
@@ -893,6 +893,24 @@ describe("App", () => {
     expect(html).toContain("\\begin{aligned}");
     expect(mathFixture).toContain("$\\alpha^2 + \\beta_i = \\gamma$");
     expect(mathFixture).toContain("$$\n\\int_{-\\infty}^{\\infty}");
+  });
+
+  it("marks source ends for headings, paragraphs, and math expressions", () => {
+    const source = "# First\n\nA $x^2$ tail\n\n$$y = mx + b$$\n\n## Later";
+    const container = document.createElement("div");
+    container.innerHTML = renderToStaticMarkup(<MarkdownPreview source={source} />);
+    const sourceEndFor = (selector: string) =>
+      container.querySelector(selector)?.closest("[data-markdown-source-end]")
+        ?.getAttribute("data-markdown-source-end");
+
+    expect(sourceEndFor("h1")).toBe(String(source.indexOf("\n\n")));
+    expect(sourceEndFor("p")).toBe(String(source.indexOf("\n\n$$")));
+    expect(sourceEndFor(".katex:not(.katex-display)")).toBe(String(source.indexOf("$ tail") + 1));
+    expect(sourceEndFor(".katex-display")).toBe(String(source.indexOf("$$\n\n##") + 2));
+
+    const multilineSource = "$$\ny = mx + b\n$$\n\nAfter";
+    container.innerHTML = renderToStaticMarkup(<MarkdownPreview source={multilineSource} />);
+    expect(sourceEndFor(".katex-display")).toBe(String(multilineSource.indexOf("\n\nAfter")));
   });
 
   it("keeps the rendered block visible behind the floating Markdown editor", () => {

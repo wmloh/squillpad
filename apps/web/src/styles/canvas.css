@@ -710,6 +710,9 @@
 .markdown-content .katex {
   color: var(--markdown-color-math, inherit);
 }
+.markdown-content .markdown-math-source-position {
+  display: contents;
+}
 .canvas-element.kind-markdown:not(.is-editing) .markdown-content {
   -webkit-user-select: none;
   user-select: none;
@@ -881,7 +884,7 @@
     transform: translate3d(
         calc(var(--markdown-editor-anchor-x, -50%) + var(--markdown-editor-origin-x, 0px)),
         calc(
-          -50% + var(--markdown-editor-origin-y, 0px) +
+          var(--markdown-editor-anchor-y, -50%) + var(--markdown-editor-origin-y, 0px) +
             var(--markdown-editor-keyboard-offset-y, 0px)
         ),
         0
@@ -893,7 +896,7 @@
     opacity: 1;
     transform: translate3d(
         var(--markdown-editor-anchor-x, -50%),
-        calc(-50% + var(--markdown-editor-keyboard-offset-y, 0px)),
+        calc(var(--markdown-editor-anchor-y, -50%) + var(--markdown-editor-keyboard-offset-y, 0px)),
         0
       )
       scale(1);
@@ -905,7 +908,7 @@
     opacity: 1;
     transform: translate3d(
         var(--markdown-editor-anchor-x, -50%),
-        calc(-50% + var(--markdown-editor-keyboard-offset-y, 0px)),
+        calc(var(--markdown-editor-anchor-y, -50%) + var(--markdown-editor-keyboard-offset-y, 0px)),
         0
       )
       scale(1);
@@ -916,7 +919,7 @@
     transform: translate3d(
         calc(var(--markdown-editor-anchor-x, -50%) + var(--markdown-editor-origin-x, 0px)),
         calc(
-          -50% + var(--markdown-editor-origin-y, 0px) +
+          var(--markdown-editor-anchor-y, -50%) + var(--markdown-editor-origin-y, 0px) +
             var(--markdown-editor-keyboard-offset-y, 0px)
         ),
         0
@@ -960,7 +963,7 @@
   opacity: 0;
   transform: translate3d(
       calc(var(--markdown-editor-anchor-x) + var(--markdown-editor-origin-x)),
-      calc(-50% + var(--markdown-editor-origin-y) + var(--markdown-editor-keyboard-offset-y)),
+      calc(var(--markdown-editor-anchor-y, -50%) + var(--markdown-editor-origin-y) + var(--markdown-editor-keyboard-offset-y)),
       0
     )
     scale(var(--markdown-editor-origin-scale-x), var(--markdown-editor-origin-scale-y));
@@ -989,7 +992,7 @@
   opacity: 1;
   transform: translate3d(
       var(--markdown-editor-anchor-x),
-      calc(-50% + var(--markdown-editor-keyboard-offset-y)),
+      calc(var(--markdown-editor-anchor-y, -50%) + var(--markdown-editor-keyboard-offset-y)),
       0
     )
     scale(1);
@@ -1000,9 +1003,72 @@
   animation: markdown-editor-close 360ms var(--ui-motion-exit) both;
   pointer-events: none;
 }
-.spatial-canvas.is-fullscreen .markdown-editor-popover {
+.canvas-screen-overlay.is-fullscreen .markdown-editor-popover {
   --markdown-editor-anchor-x: 0px;
   left: 0.75rem;
+}
+.markdown-editor-popover.is-custom-layout,
+.canvas-screen-overlay.is-fullscreen .markdown-editor-popover.is-custom-layout {
+  --markdown-editor-anchor-x: 0px;
+  --markdown-editor-anchor-y: 0px;
+  transition: none;
+}
+.markdown-editor-move-handle {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.markdown-editor-move-handle:active {
+  cursor: grabbing;
+}
+.markdown-editor-popover .markdown-editor-move-handle {
+  width: auto;
+  height: 2rem;
+  justify-content: flex-start;
+  padding-inline: 0.35rem;
+  border-color: transparent;
+  color: var(--app-muted);
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.markdown-editor-resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0 0 0.6rem 0;
+  color: var(--app-muted);
+  background: transparent;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.markdown-editor-resize-handle::after {
+  position: absolute;
+  right: 0.35rem;
+  bottom: 0.35rem;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  content: "";
+}
+.markdown-editor-resize-handle:hover,
+.markdown-editor-resize-handle:focus-visible {
+  color: var(--app-accent-strong);
+  background: var(--app-accent-soft);
+}
+.markdown-editor-resize-handle:focus-visible,
+.markdown-editor-move-handle:focus-visible {
+  outline: 2px solid var(--app-accent-strong);
+  outline-offset: -2px;
 }
 .markdown-editor-heading {
   display: flex;
@@ -1242,6 +1308,11 @@
 .spatial-canvas textarea,
 .spatial-canvas [contenteditable="true"],
 .spatial-canvas [data-canvas-editor="active"] {
+  touch-action: auto;
+  -webkit-user-select: text;
+  user-select: text;
+}
+.canvas-screen-overlay [data-canvas-editor="active"] {
   touch-action: auto;
   -webkit-user-select: text;
   user-select: text;

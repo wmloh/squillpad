@@ -10,6 +10,20 @@
   background: var(--canvas-background);
   box-shadow: var(--app-shadow);
 }
+.canvas-viewport {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+/* Keep editors and status anchored while the canvas scrolls to world-space links. */
+.canvas-screen-overlay {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  pointer-events: none;
+}
 .canvas-toolbar {
   --canvas-toolbar-height: 44px;
   --canvas-control-height: min(2.75rem, max(1.25rem, calc(var(--canvas-toolbar-height) - 0.8rem)));

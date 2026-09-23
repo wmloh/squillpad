@@ -51,6 +51,7 @@ export interface ResizeDragShape {
 export const RESIZE_HANDLES: readonly ResizeHandle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
 export interface CanvasElementLayerProps {
+  readonly pageId: string;
   readonly transform: string;
   readonly visibleTextBoxGroups: readonly { readonly id: string; readonly bounds: CanvasBounds }[];
   readonly visibleElements: readonly CanvasElement[];
@@ -77,6 +78,7 @@ export interface CanvasElementLayerProps {
   readonly theme: "light" | "dark";
   readonly markdownSources: Readonly<Record<string, string>>;
   readonly surfaceRef: RefObject<HTMLDivElement | null>;
+  readonly editorOverlayRef: RefObject<HTMLDivElement | null>;
   readonly elementsRef: MutableRefObject<readonly CanvasElement[]>;
   readonly cameraRef: MutableRefObject<Camera>;
   readonly gestureHistoryRef: MutableRefObject<string | undefined>;
@@ -131,6 +133,7 @@ export interface CanvasElementLayerProps {
 const LASER_POINTER_TIP_RADIUS = 5;
 
 export function CanvasElementLayer({
+  pageId,
   transform,
   visibleTextBoxGroups,
   visibleElements,
@@ -157,6 +160,7 @@ export function CanvasElementLayer({
   theme,
   markdownSources,
   surfaceRef,
+  editorOverlayRef,
   elementsRef,
   cameraRef,
   gestureHistoryRef,
@@ -314,6 +318,8 @@ export function CanvasElementLayer({
                   </button>
                 )}
                 <MarkdownBlock
+                  editorLayoutKey={`${pageId}:${element.id}`}
+                  captureDoubleClickCaret={!readOnly && (tool === "select" || tool === "text")}
                   searchMatchOffset={searchBlock?.matchOffset ?? 0}
                   searchQuery={markdownSearchQuery}
                   {...(activeMarkdownSearchElementId === element.id &&
@@ -334,7 +340,7 @@ export function CanvasElementLayer({
                     return colorStyle === undefined ? {} : { colorStyle };
                   })()}
                   editing={effectiveEditingMarkdownId === element.id}
-                  editorPortalTarget={surfaceRef.current}
+                  editorPortalTarget={editorOverlayRef.current}
                   source={markdownSources[element.id] ?? ""}
                   onChange={(source) => onMarkdownSourceChange?.(element.id, source)}
                   onCommit={(source) => commitMarkdown(element.id, source)}

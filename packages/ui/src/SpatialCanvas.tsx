@@ -353,6 +353,7 @@ function SpatialCanvasImpl(
   ref: ForwardedRef<SpatialCanvasHandle>,
 ) {
   const surfaceRef = useRef<HTMLDivElement>(null);
+  const editorOverlayRef = useRef<HTMLDivElement>(null);
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
   const markdownImportRef = useRef<HTMLInputElement>(null);
@@ -848,7 +849,7 @@ function SpatialCanvasImpl(
     canvasHistory.record(pageId, before, snapshot());
     emitElements?.(next);
     emitSource?.(id, source);
-    if (fullscreen) centerCanvasElement(element);
+    if (fullscreen) centerCanvasElement(element, false);
     setSelectedIds(new Set([id]));
     setEditingMarkdownId(id);
     setTool("select");
@@ -926,14 +927,16 @@ function SpatialCanvasImpl(
     [onCameraChange, reportPerformance],
   );
   const centerCanvasElement = useCallback(
-    (element: CanvasElement | undefined) => {
+    (element: CanvasElement | undefined, centerVertically = true) => {
       const surface = surfaceRef.current;
       if (surface === null || element === undefined) return;
       const bounds = elementBounds(element);
       setCamera((current) => ({
         ...current,
         x: surface.clientWidth / 2 - (bounds.x + bounds.width / 2) * current.zoom,
-        y: surface.clientHeight / 2 - (bounds.y + bounds.height / 2) * current.zoom,
+        y: centerVertically
+          ? surface.clientHeight / 2 - (bounds.y + bounds.height / 2) * current.zoom
+          : current.y,
       }));
     },
     [setCamera],
@@ -1416,7 +1419,7 @@ function SpatialCanvasImpl(
       effectiveMarkdownColorStyles.defaultStyleId,
     );
     onElementsChange?.(insertElement(elementsRef.current, element));
-    if (fullscreen) centerCanvasElement(element);
+    if (fullscreen) centerCanvasElement(element, false);
     setSelectedIds(new Set([id]));
     setEditingMarkdownId(id);
     setTool("select");
@@ -1424,7 +1427,7 @@ function SpatialCanvasImpl(
   const beginMarkdownEditing = (id: string) => {
     if (readOnlyRef.current) return;
     const element = elementsRef.current.find((candidate) => candidate.id === id);
-    if (fullscreen) centerCanvasElement(element);
+    if (fullscreen) centerCanvasElement(element, false);
     setSelectedIds(new Set([id]));
     setEditingMarkdownId(id);
   };
@@ -1476,7 +1479,7 @@ function SpatialCanvasImpl(
     const inserted = next.find((element) => element.id === id);
     if (inserted === undefined) return;
     onElementsChange(next);
-    if (fullscreen) centerCanvasElement(inserted);
+    if (fullscreen) centerCanvasElement(inserted, false);
     emitSource?.(id, "");
     setSelectedTextGroupId(undefined);
     setSelectedIds(new Set([id]));
@@ -3436,6 +3439,7 @@ function SpatialCanvasImpl(
           onFullscreenChange={(next) => onFullscreenChange?.(next)}
         />
       )}
+      <div className="canvas-viewport">
       <div
         ref={surfaceRef}
         className={`spatial-canvas page-background-${pageBackground} ${fullscreen ? "is-fullscreen" : ""} ${isPanning ? "is-panning" : ""} ${radialMenu !== undefined ? "is-radial-menu-open" : ""} ${palmRejectionActive ? "is-palm-rejection" : ""} ${palmRejectionActive && touchOverrideHeld ? "is-touch-unlocked" : ""} ${readOnly ? `read-only ${tool === "laser" ? "tool-laser" : "tool-pan"}` : `tool-${tool}`}`}
@@ -3559,6 +3563,7 @@ function SpatialCanvasImpl(
           </svg>
         )}
         <CanvasElementLayer
+          pageId={pageId}
           transform={transform}
           visibleTextBoxGroups={visibleTextBoxGroups}
           visibleElements={visibleElements}
@@ -3585,6 +3590,7 @@ function SpatialCanvasImpl(
           theme={theme}
           markdownSources={markdownSources}
           surfaceRef={surfaceRef}
+          editorOverlayRef={editorOverlayRef}
           elementsRef={elementsRef}
           cameraRef={cameraRef}
           gestureHistoryRef={gestureHistoryRef}
@@ -3680,6 +3686,9 @@ function SpatialCanvasImpl(
             draggable={false}
           />
         )}
+        {radialMenuOverlay}
+      </div>
+      <div ref={editorOverlayRef} className={`canvas-screen-overlay ${fullscreen ? "is-fullscreen" : ""}`}>
         {!presentationOnly && (
           <div className="canvas-status">
             <span aria-label="Cursor world coordinates">
@@ -3689,7 +3698,7 @@ function SpatialCanvasImpl(
             <output aria-label="Zoom level">{Math.round(camera.zoom * 100)}%</output>
           </div>
         )}
-        {radialMenuOverlay}
+      </div>
       </div>
     </div>
   );

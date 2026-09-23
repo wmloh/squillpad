@@ -142,7 +142,7 @@ test("opens an existing Markdown box with one click from the Text tool", async (
   await expect(markdown).toContainText("Existing text updated");
 });
 
-test("centers fullscreen Markdown editing and opens the editor on the left", async ({ page }) => {
+test("centers fullscreen Markdown editing horizontally without vertical panning", async ({ page }) => {
   await page.goto("/");
   const canvas = await openFreshPage(page);
   const initialBounds = await canvas.boundingBox();
@@ -151,7 +151,12 @@ test("centers fullscreen Markdown editing and opens the editor on the left", asy
   await page.getByRole("button", { name: "Text", exact: true }).click();
   await page.mouse.click(initialBounds.x + 500, initialBounds.y + 180);
   await expect(page.locator(".cm-content")).toBeVisible();
-  await page.keyboard.insertText("Fullscreen editor positioning");
+  await page.keyboard.insertText(
+    [
+      "Fullscreen editor positioning",
+      ...Array.from({ length: 24 }, (_, index) => `Line ${index + 1}`),
+    ].join("\n\n"),
+  );
   await page.getByRole("button", { name: "Close Markdown editor", exact: true }).click();
 
   const markdown = page.locator(".canvas-element.kind-markdown");
@@ -159,7 +164,19 @@ test("centers fullscreen Markdown editing and opens the editor on the left", asy
   await page.getByRole("button", { name: "Enter fullscreen", exact: true }).click();
   await expect(page.locator(".notebook-app.is-canvas-fullscreen")).toBeVisible();
 
-  await markdown.dblclick();
+  const beforeCanvasBounds = await canvas.boundingBox();
+  const beforeMarkdownBounds = await markdown.boundingBox();
+  if (beforeCanvasBounds === null || beforeMarkdownBounds === null) {
+    throw new Error("Fullscreen Markdown geometry is unavailable before editing");
+  }
+  expect(
+    Math.abs(
+      beforeMarkdownBounds.y + beforeMarkdownBounds.height / 2 -
+        (beforeCanvasBounds.y + beforeCanvasBounds.height / 2),
+    ),
+  ).toBeGreaterThan(50);
+  const beforeEditing = await cameraPosition(canvas);
+  await markdown.dblclick({ position: { x: 24, y: 24 } });
   const editor = page.locator(".markdown-editor-popover.is-open");
   await expect(editor).toBeVisible();
   const canvasBounds = await canvas.boundingBox();
@@ -173,12 +190,106 @@ test("centers fullscreen Markdown editing and opens the editor on the left", asy
     canvasBounds.x + canvasBounds.width / 2,
     0,
   );
-  expect(markdownBounds.y + markdownBounds.height / 2).toBeCloseTo(
-    canvasBounds.y + canvasBounds.height / 2,
-    0,
-  );
+  expect(markdownBounds.height).toBeGreaterThan(400);
+  expect((await cameraPosition(canvas)).y).toBe(beforeEditing.y);
   expect(editorBounds.x).toBeLessThan(canvasBounds.x + canvasBounds.width / 2);
   expect(editorBounds.x - canvasBounds.x).toBeLessThan(24);
+});
+
+test("keeps only customized Markdown editor layouts for the browser session", async ({ page }) => {
+  await page.goto("/");
+  const canvas = await openFreshPage(page);
+  const canvasBounds = await canvas.boundingBox();
+  if (canvasBounds === null) throw new Error("Canvas bounds are unavailable");
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await page.mouse.click(canvasBounds.x + 240, canvasBounds.y + 160);
+  await page.keyboard.insertText("Customized editor");
+
+  const editor = page.locator(".markdown-editor-popover.is-open");
+  await expect(editor).toBeVisible();
+  expect(
+    await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("squillpad:markdown-editor-layout:")).length),
+  ).toBe(0);
+  const initial = await editor.boundingBox();
+  if (initial === null) throw new Error("Markdown editor bounds are unavailable");
+
+  const move = page.getByRole("button", { name: "Move Markdown editor" });
+  await move.click();
+  expect(
+    await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("squillpad:markdown-editor-layout:")).length),
+  ).toBe(0);
+  const moveBounds = await move.boundingBox();
+  if (moveBounds === null) throw new Error("Move handle bounds are unavailable");
+  await drag(page, moveBounds.x + 45, moveBounds.y + moveBounds.height / 2, 90, -45);
+  await expect(editor).toHaveClass(/is-custom-layout/u);
+  const moved = await editor.boundingBox();
+  if (moved === null) throw new Error("Moved editor bounds are unavailable");
+  expect(moved.x).toBeGreaterThan(initial.x + 70);
+  expect(moved.y).toBeLessThan(initial.y - 25);
+
+  const resize = page.getByRole("button", { name: "Resize Markdown editor" });
+  const resizeBounds = await resize.boundingBox();
+  if (resizeBounds === null) throw new Error("Resize handle bounds are unavailable");
+  await drag(page, resizeBounds.x + resizeBounds.width / 2, resizeBounds.y + resizeBounds.height / 2, 110, 65);
+  const customized = await editor.boundingBox();
+  if (customized === null) throw new Error("Resized editor bounds are unavailable");
+  expect(customized.width).toBeGreaterThan(moved.width + 80);
+  expect(customized.height).toBeGreaterThan(moved.height + 45);
+  expect(
+    await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("squillpad:markdown-editor-layout:")).length),
+  ).toBe(1);
+
+  await page.getByRole("button", { name: "Close Markdown editor" }).click();
+  await page.getByRole("button", { name: "Enter fullscreen" }).click();
+  await page.locator(".canvas-element.kind-markdown").dblclick();
+  await expect(editor).toBeVisible();
+  const fullscreen = await editor.boundingBox();
+  if (fullscreen === null) throw new Error("Fullscreen editor bounds are unavailable");
+  expect(fullscreen.width).toBeCloseTo(customized.width, 0);
+  expect(fullscreen.height).toBeCloseTo(customized.height, 0);
+  const fullscreenMoveBounds = await move.boundingBox();
+  if (fullscreenMoveBounds === null) throw new Error("Fullscreen move handle bounds are unavailable");
+  await drag(page, fullscreenMoveBounds.x + 45, fullscreenMoveBounds.y + fullscreenMoveBounds.height / 2, 35, 30);
+  const fullscreenMoved = await editor.boundingBox();
+  if (fullscreenMoved === null) throw new Error("Moved fullscreen editor bounds are unavailable");
+  expect(fullscreenMoved.x).toBeGreaterThan(fullscreen.x + 20);
+  const fullscreenResizeBounds = await resize.boundingBox();
+  if (fullscreenResizeBounds === null) throw new Error("Fullscreen resize handle bounds are unavailable");
+  await drag(page, fullscreenResizeBounds.x + 8, fullscreenResizeBounds.y + 8, 40, 25);
+  const fullscreenResized = await editor.boundingBox();
+  if (fullscreenResized === null) throw new Error("Resized fullscreen editor bounds are unavailable");
+  expect(fullscreenResized.width).toBeGreaterThan(fullscreenMoved.width + 25);
+  await page.getByRole("button", { name: "Close Markdown editor" }).click();
+  await page.reload();
+  await page.locator(".canvas-element.kind-markdown").dblclick();
+  await expect(editor).toHaveClass(/is-custom-layout/u);
+  const restored = await editor.boundingBox();
+  if (restored === null) throw new Error("Restored editor bounds are unavailable");
+  expect(restored.width).toBeCloseTo(fullscreenResized.width, 0);
+  expect(restored.height).toBeCloseTo(fullscreenResized.height, 0);
+
+  await page.getByRole("button", { name: "Close Markdown editor" }).click();
+  await expect(editor).toHaveCount(0);
+  const secondCanvas = await openFreshPage(page);
+  const secondCanvasBounds = await secondCanvas.boundingBox();
+  if (secondCanvasBounds === null) throw new Error("Second canvas bounds are unavailable");
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await page.mouse.click(secondCanvasBounds.x + 800, secondCanvasBounds.y + 600);
+  await expect(editor).not.toHaveClass(/is-custom-layout/u);
+  expect(
+    await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("squillpad:markdown-editor-layout:")).length),
+  ).toBe(1);
+  await page.keyboard.insertText("Default editor");
+  await page.getByRole("button", { name: "Close Markdown editor" }).click();
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.locator(".canvas-element.kind-markdown").last().dblclick();
+  await expect(editor).toBeVisible();
+  await page.getByRole("button", { name: "Move Markdown editor" }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.getByRole("button", { name: "Resize Markdown editor" }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(editor).not.toHaveClass(/is-custom-layout/u);
+  expect(await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("squillpad:markdown-editor-layout:")).length)).toBe(1);
 });
 
 test("keeps empty Markdown editor footer controls usable in windowed and fullscreen modes", async ({
@@ -457,7 +568,7 @@ test("navigates Markdown footnotes without scrolling the canvas surface", async 
   const initialRoute = new URL(page.url()).hash;
   const readStatusGeometry = () =>
     canvas.evaluate((surface) => {
-      const statusElement = surface.querySelector<HTMLElement>(".canvas-status");
+      const statusElement = surface.parentElement?.querySelector<HTMLElement>(".canvas-status");
       if (statusElement === null) throw new Error("Canvas status is unavailable");
       const surfaceRect = surface.getBoundingClientRect();
       const statusRect = statusElement.getBoundingClientRect();
