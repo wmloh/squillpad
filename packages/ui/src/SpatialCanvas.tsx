@@ -3528,6 +3528,14 @@ function SpatialCanvasImpl(
         onClick={handleMarkdownFragmentClick}
         onWheel={(event) => {
           if (isEditableTarget(event.target)) return;
+          const textBox =
+            event.target instanceof Element ? event.target.closest(".markdown-block") : null;
+          if (
+            textBox !== null &&
+            (textBox.scrollHeight > textBox.clientHeight ||
+              textBox.scrollWidth > textBox.clientWidth)
+          )
+            return;
           event.preventDefault();
           const point = localPoint(event.clientX, event.clientY);
           setCamera((value) =>
