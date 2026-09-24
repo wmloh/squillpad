@@ -5,6 +5,7 @@ test("scrolls an overflowing text box without zooming the canvas", async ({
 }) => {
   await page.goto("/");
   const pages = page.locator(".page-list > li > .page-select");
+  await expect(pages.first()).toBeVisible();
   const pageCount = await pages.count();
   await page.getByRole("button", { name: "New page", exact: true }).click();
   await expect(pages).toHaveCount(pageCount + 1);

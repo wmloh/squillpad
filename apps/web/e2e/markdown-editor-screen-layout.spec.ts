@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 test("keeps a customized Markdown editor fixed to the visible canvas after pan and zoom", async ({ page }) => {
   await page.goto("/");
   const pages = page.locator(".page-list > li > .page-select");
+  await expect(pages.first()).toBeVisible();
   const initialCount = await pages.count();
   await page.getByRole("button", { name: "New page", exact: true }).click();
   await expect(pages).toHaveCount(initialCount + 1);
