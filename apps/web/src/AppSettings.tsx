@@ -253,25 +253,27 @@ export function AppSettings({
           role="group"
           aria-label="Dropdown menus"
         >
-          <label className="settings-select-control">
-            <span>Autosave frequency</span>
-            <select
-              aria-label="Autosave frequency"
-              title="Autosave frequency while LAN sharing is disabled"
-              value={autosaveIntervalSeconds}
-              disabled={!hostSession || clientReadOnly}
-              onChange={(event) =>
-                onAutosaveIntervalChange(Number(event.target.value) as AutosaveIntervalSeconds)
-              }
-            >
-              {AUTOSAVE_INTERVAL_SECONDS.map((seconds) => (
-                <option key={seconds} value={seconds}>
-                  {autosaveIntervalLabel(seconds)}
-                </option>
-              ))}
-            </select>
-            <small className="settings-fineprint">Used only while LAN sharing is disabled.</small>
-          </label>
+          {hostSession && (
+            <label className="settings-select-control">
+              <span>Autosave frequency</span>
+              <select
+                aria-label="Autosave frequency"
+                title="Autosave frequency while LAN sharing is disabled"
+                value={autosaveIntervalSeconds}
+                disabled={clientReadOnly}
+                onChange={(event) =>
+                  onAutosaveIntervalChange(Number(event.target.value) as AutosaveIntervalSeconds)
+                }
+              >
+                {AUTOSAVE_INTERVAL_SECONDS.map((seconds) => (
+                  <option key={seconds} value={seconds}>
+                    {autosaveIntervalLabel(seconds)}
+                  </option>
+                ))}
+              </select>
+              <small className="settings-fineprint">Used only while LAN sharing is disabled.</small>
+            </label>
+          )}
           <label className="settings-select-control">
             <span>Page background</span>
             <select

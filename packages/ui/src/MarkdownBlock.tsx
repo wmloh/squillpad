@@ -1257,12 +1257,37 @@ function CodeMirrorEditor({
     if (editorPhase !== "open" || initialCaretOffset === undefined) return;
     const view = viewRef.current;
     if (view === undefined) return;
-    const frame = window.requestAnimationFrame(() => {
+    const anchor = Math.max(0, Math.min(initialCaretOffset, view.state.doc.length));
+    let frame: number;
+    let attempts = 0;
+    // Wrapped lines in a long document can change CodeMirror's height estimate after the first scroll.
+    const revealCaret = () => {
       if (viewRef.current !== view) return;
-      const anchor = Math.max(0, Math.min(initialCaretOffset, view.state.doc.length));
       if (view.state.selection.main.head !== anchor) return;
-      view.dispatch({ effects: EditorView.scrollIntoView(anchor, { y: "center" }) });
-    });
+      const caret = view.coordsAtPos(anchor);
+      const viewport = view.scrollDOM.getBoundingClientRect();
+      if (caret !== null) {
+        const offsetFromCenter = (caret.top + caret.bottom) / 2 - viewport.top - viewport.height / 2;
+        const atStart = view.scrollDOM.scrollTop <= 1;
+        const atEnd = view.scrollDOM.scrollTop >= view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight - 1;
+        if (
+          caret.top >= viewport.top + 8 &&
+          caret.bottom <= viewport.bottom - 8 &&
+          (Math.abs(offsetFromCenter) <= viewport.height * 0.2 ||
+            (offsetFromCenter < 0 && atStart) ||
+            (offsetFromCenter > 0 && atEnd))
+        ) {
+          return;
+        }
+        if (attempts++ >= 16) return;
+        view.scrollDOM.scrollTop += offsetFromCenter;
+      } else {
+        if (attempts++ >= 16) return;
+        view.dispatch({ effects: EditorView.scrollIntoView(anchor, { y: "center" }) });
+      }
+      frame = window.requestAnimationFrame(revealCaret);
+    };
+    frame = window.requestAnimationFrame(revealCaret);
     return () => window.cancelAnimationFrame(frame);
   }, [editorPhase, initialCaretOffset]);
 

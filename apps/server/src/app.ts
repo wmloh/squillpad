@@ -1122,8 +1122,8 @@ async function handleHierarchyRequest(
     const action = requiredString(body, "action");
     if (action === "update-lan-sharing-default") {
       requireSharingAuthorization(authentication, request);
-    } else if (action === "update-autosave-frequency" && authentication !== undefined) {
-      requireLocalHostAuthorization(authentication, request);
+    } else if (action === "update-autosave-frequency") {
+      requireProjectSettingsHostAuthorization(authentication, request);
     }
     const result = await executeHierarchyCommand(hierarchy, action, body);
     await onHierarchyMutation?.(action, result);
