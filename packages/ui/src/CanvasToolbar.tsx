@@ -346,7 +346,7 @@ export function CanvasToolbar({
           aria-pressed={tool === "pan"}
           aria-keyshortcuts="M"
           aria-label="Hand"
-          title="Hand (M; hold Space temporarily)"
+          title="Hand (M; hold Space to drag or scroll; add Shift to scroll sideways)"
           onClick={() => onToolChange("pan")}
         >
           <HandToolIcon />

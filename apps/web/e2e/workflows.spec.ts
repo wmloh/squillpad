@@ -75,6 +75,45 @@ test("temporarily pans with Space from another canvas tool", async ({ page }) =>
   await expect(page.locator(".canvas-element")).toHaveCount(elementCount);
 });
 
+test("pans both axes with the wheel while Space is held", async ({ page }) => {
+  await page.goto("/");
+  const canvas = await openFreshPage(page);
+  const bounds = await canvas.boundingBox();
+  if (bounds === null) throw new Error("Canvas bounds are unavailable");
+
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Hand" })).toHaveAttribute(
+    "title",
+    "Hand (M; hold Space to drag or scroll; add Shift to scroll sideways)",
+  );
+  await page.mouse.move(bounds.x + 180, bounds.y + 140);
+  const before = await cameraPosition(canvas);
+  const zoom = page.getByLabel("Zoom level");
+  const initialZoom = await zoom.textContent();
+
+  await page.keyboard.down("Space");
+  await page.mouse.wheel(80, 120);
+  await expect.poll(() => cameraPosition(canvas)).toEqual({
+    x: before.x - 80,
+    y: before.y - 120,
+  });
+  await expect(zoom).toHaveText(initialZoom ?? "");
+
+  const beforeSideScroll = await cameraPosition(canvas);
+  await page.keyboard.down("Shift");
+  await page.mouse.wheel(0, 100);
+  await expect.poll(() => cameraPosition(canvas)).toEqual({
+    x: beforeSideScroll.x - 100,
+    y: beforeSideScroll.y,
+  });
+  await expect(zoom).toHaveText(initialZoom ?? "");
+  await page.keyboard.up("Shift");
+
+  await page.keyboard.up("Space");
+  await page.mouse.wheel(0, 120);
+  await expect(zoom).not.toHaveText(initialZoom ?? "");
+});
+
 test("pans with arrow keys but leaves the camera still while editing Markdown", async ({
   page,
 }) => {

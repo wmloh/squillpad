@@ -3535,12 +3535,24 @@ function SpatialCanvasImpl(
           const textBox =
             event.target instanceof Element ? event.target.closest(".markdown-block") : null;
           if (
+            !spaceHeldRef.current &&
             textBox !== null &&
             (textBox.scrollHeight > textBox.clientHeight ||
               textBox.scrollWidth > textBox.clientWidth)
           )
             return;
           event.preventDefault();
+          if (spaceHeldRef.current) {
+            const horizontalWheelDelta = event.shiftKey
+              ? event.deltaX || event.deltaY
+              : event.deltaX;
+            const deltaX = horizontalWheelDelta *
+              (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? event.currentTarget.clientWidth : 1);
+            const deltaY = (event.shiftKey ? 0 : event.deltaY) *
+              (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? event.currentTarget.clientHeight : 1);
+            setCamera((value) => panCamera(value, { x: -deltaX, y: -deltaY }));
+            return;
+          }
           const point = localPoint(event.clientX, event.clientY);
           setCamera((value) =>
             zoomCameraAt(value, point, value.zoom * Math.exp(-event.deltaY * 0.0015)),
