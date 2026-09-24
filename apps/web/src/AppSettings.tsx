@@ -52,6 +52,7 @@ export interface AppSettingsProps {
   readonly clientReadOnly: boolean;
   readonly busy: boolean;
   readonly profileSettingsImportRef: RefObject<HTMLInputElement | null>;
+  readonly projectSettingsImportRef: RefObject<HTMLInputElement | null>;
   readonly onMarkdownBoxAppearanceChange: (appearance: MarkdownBoxAppearance) => void;
   readonly onTextScalePercentChange: (percent: number) => void;
   readonly onLaserPointerSettingsChange: (settings: LaserPointerSettings) => void;
@@ -64,6 +65,8 @@ export interface AppSettingsProps {
   readonly onPageBackgroundChange: (background: "blank" | "ruled" | "grid") => void;
   readonly onExportProfileSettings: () => void;
   readonly onImportProfileSettings: (event: ChangeEvent<HTMLInputElement>) => void;
+  readonly onExportProjectSettings: () => void;
+  readonly onImportProjectSettings: (event: ChangeEvent<HTMLInputElement>) => void;
 }
 
 export function AppSettings({
@@ -82,6 +85,7 @@ export function AppSettings({
   clientReadOnly,
   busy,
   profileSettingsImportRef,
+  projectSettingsImportRef,
   onMarkdownBoxAppearanceChange,
   onTextScalePercentChange,
   onLaserPointerSettingsChange,
@@ -94,6 +98,8 @@ export function AppSettings({
   onPageBackgroundChange,
   onExportProfileSettings,
   onImportProfileSettings,
+  onExportProjectSettings,
+  onImportProjectSettings,
 }: AppSettingsProps) {
   useEffect(() => {
     const repositionSettingsMenu = () => {
@@ -153,8 +159,8 @@ export function AppSettings({
       >
         {/*
          * General specification: keep settings grouped in this order—sliders, dropdown menus,
-         * binary toggles, typable numeric fields, and buttons. Keep the three action controls in
-         * one row while this group contains no more than three controls.
+         * binary toggles, typable numeric fields, and buttons. Keep transfer controls in compact
+         * rows grouped by the scope of the transferred settings.
          */}
         <div className="settings-group settings-group--sliders" role="group" aria-label="Sliders">
           <label className="settings-range-control">
@@ -247,25 +253,27 @@ export function AppSettings({
           role="group"
           aria-label="Dropdown menus"
         >
-          <label className="settings-select-control">
-            <span>Autosave frequency</span>
-            <select
-              aria-label="Autosave frequency"
-              title="Autosave frequency while LAN sharing is disabled"
-              value={autosaveIntervalSeconds}
-              disabled={!hostSession || clientReadOnly}
-              onChange={(event) =>
-                onAutosaveIntervalChange(Number(event.target.value) as AutosaveIntervalSeconds)
-              }
-            >
-              {AUTOSAVE_INTERVAL_SECONDS.map((seconds) => (
-                <option key={seconds} value={seconds}>
-                  {autosaveIntervalLabel(seconds)}
-                </option>
-              ))}
-            </select>
-            <small className="settings-fineprint">Used only while LAN sharing is disabled.</small>
-          </label>
+          {hostSession && (
+            <label className="settings-select-control">
+              <span>Autosave frequency</span>
+              <select
+                aria-label="Autosave frequency"
+                title="Autosave frequency while LAN sharing is disabled"
+                value={autosaveIntervalSeconds}
+                disabled={clientReadOnly}
+                onChange={(event) =>
+                  onAutosaveIntervalChange(Number(event.target.value) as AutosaveIntervalSeconds)
+                }
+              >
+                {AUTOSAVE_INTERVAL_SECONDS.map((seconds) => (
+                  <option key={seconds} value={seconds}>
+                    {autosaveIntervalLabel(seconds)}
+                  </option>
+                ))}
+              </select>
+              <small className="settings-fineprint">Used only while LAN sharing is disabled.</small>
+            </label>
+          )}
           <label className="settings-select-control">
             <span>Page background</span>
             <select
@@ -333,7 +341,7 @@ export function AppSettings({
         <div
           className="settings-group settings-group--buttons"
           role="group"
-          aria-label="Profile and help actions"
+          aria-label="Settings transfer and help actions"
         >
           <div className="settings-profile-transfer">
             {authenticatedUsername !== undefined && (
@@ -366,6 +374,36 @@ export function AppSettings({
                 hidden
                 onChange={onImportProfileSettings}
               />
+            )}
+            {hostSession && (
+              <>
+                <span title="Project preferences only; hierarchy, names, pages, and content are never included.">
+                  Project settings
+                </span>
+                <div className="settings-action-row">
+                  <button
+                    type="button"
+                    disabled={busy || clientReadOnly}
+                    onClick={onExportProjectSettings}
+                  >
+                    Export project
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || clientReadOnly}
+                    onClick={() => projectSettingsImportRef.current?.click()}
+                  >
+                    Import project
+                  </button>
+                </div>
+                <input
+                  ref={projectSettingsImportRef}
+                  type="file"
+                  accept="application/json,.json"
+                  hidden
+                  onChange={onImportProjectSettings}
+                />
+              </>
             )}
           </div>
         </div>

@@ -18,8 +18,7 @@
     "test:boundaries": "node scripts/check-package-boundaries.mjs",
     "typecheck": "pnpm run build:shared && pnpm --recursive --if-present run typecheck",
     "lint": "pnpm run build:shared && eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@eslint/js": "9.33.0",

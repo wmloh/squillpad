@@ -1304,6 +1304,13 @@
             sessions, or access tokens.
           </li>
           <li>
+            <strong>Project settings:</strong> hosts can use <strong>Export project</strong> and
+            <strong>Import project</strong> to transfer notebook-wide preferences such as default
+            zoom, Markdown appearance and named styles, ink colors, laser decay, LAN-sharing
+            defaults, and autosave frequency. Project, section, and page names and content are not
+            included. Imported Markdown styles are merged with existing styles.
+          </li>
+          <li>
             <strong>Named Markdown styles:</strong> press <strong>Text</strong>; the
             <strong>Edit styles</strong> button appears in the toolbar. Use it to create or edit a
             style. To apply one, select a Markdown text box and set <strong>Color style</strong> at
@@ -1683,9 +1690,35 @@ pnpm build
                 Make sure the launcher terminal is still open, sharing is enabled, and both devices
                 are on the same trusted network. Paste the complete authorized URL, including the
                 access token. A client device cannot use a host-only <code>localhost</code> URL; use
-                the network URL printed by the launcher or shown in Sharing. A firewall may also
-                need to allow the chosen port on the local network.
+                the network URL printed by the launcher or shown in Sharing.
               </p>
+              <ul>
+                <li>
+                  <strong>Check the host's network setting.</strong> Set the host computer's current
+                  Wi-Fi or Ethernet network to <strong>Private</strong> or <strong>Trusted</strong>
+                  only if you trust that network. On Windows, open <strong>Settings → Network &amp;
+                  internet</strong>, select the connected network, and set its network profile to
+                  <strong>Private</strong>. A Public profile may block incoming connections.
+                </li>
+                <li>
+                  <strong>Allow the host port.</strong> Check the port in the launcher or Sharing
+                  link (for example, <code>4173</code>), then allow inbound TCP traffic to that port
+                  in the host's firewall for the trusted local network. On Windows, open
+                  <strong>Windows Security → Firewall &amp; network protection → Advanced settings
+                  → Inbound Rules → New Rule</strong>, and create a port rule for TCP and the chosen
+                  port on the Private profile. Do not expose the port through your router to the
+                  public internet.
+                </li>
+                <li>
+                  <strong>If the host runs in WSL 2, check Windows as well.</strong> Allow the same
+                  TCP port through Windows Firewall. With WSL mirrored networking, the Hyper-V
+                  firewall may also need an inbound rule for WSL and that port. With WSL's default
+                  NAT networking, access from another device additionally requires a Windows port
+                  forwarding rule to the WSL address. See
+                  <a href="https://learn.microsoft.com/en-us/windows/wsl/networking">Microsoft's WSL networking guide</a>
+                  for the steps that match your networking mode.
+                </li>
+              </ul>
             </div>
           </details>
           <details>

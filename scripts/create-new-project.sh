@@ -192,6 +192,7 @@ project_directory="$(node -e 'process.stdout.write(require("node:path").resolve(
 slug="$(slugify "$project_name")"
 launcher_directory="$repo_root/launchers"
 launcher_path="$launcher_directory/$slug.sh"
+launcher_metadata_path="$launcher_directory/$slug.launcher.json"
 
 if [[ -L "$launcher_directory" || (-e "$launcher_directory" && ! -d "$launcher_directory") ]]; then
   fail "The repository launchers path is not a real directory: $launcher_directory"
@@ -250,11 +251,13 @@ project_directory_literal="$(printf '%q' "$project_directory")"
 name_argument="$(printf '%q' "$project_name")"
 directory_argument="$(printf '%q' "$project_directory")"
 temporary_launcher="$(mktemp "$launcher_directory/.${slug}.XXXXXX")"
+temporary_launcher_metadata="$(mktemp "$launcher_directory/.${slug}.metadata.XXXXXX")"
 
-cleanup_temporary_launcher() {
+cleanup_temporary_launcher_files() {
   rm -f -- "$temporary_launcher"
+  rm -f -- "$temporary_launcher_metadata"
 }
-trap cleanup_temporary_launcher EXIT
+trap cleanup_temporary_launcher_files EXIT
 
 {
   printf '%s\n' '#!/usr/bin/env bash' '' '# SquillPad project launcher'
@@ -436,9 +439,11 @@ node "$server_entry" "${forwarded_args[@]}" 2>&1 |
     printf '%s\n' "$line"
     if [[ -z "$host_url" && "$line" =~ $host_url_pattern ]]; then
       host_url="${BASH_REMATCH[1]}"
-      printf 'Opening SquillPad in the default browser: %s\n' "$host_url" >&2
-      if ! open_default_browser "$host_url"; then
-        printf 'Open this URL manually: %s\n' "$host_url" >&2
+      if [[ "${SQUILLPAD_OPEN_BROWSER:-1}" == "1" ]]; then
+        printf 'Opening SquillPad in the default browser: %s\n' "$host_url" >&2
+        if ! open_default_browser "$host_url"; then
+          printf 'Open this URL manually: %s\n' "$host_url" >&2
+        fi
       fi
     fi
   done
@@ -450,8 +455,21 @@ exit "${pipeline_status[0]}"
 LAUNCHER_END
 } > "$temporary_launcher"
 
+node -e '
+const fs = require("node:fs");
+const [path, launcher, name, projectDirectory, port] = process.argv.slice(1);
+fs.writeFileSync(path, `${JSON.stringify({
+  schemaVersion: 1,
+  launcher,
+  name,
+  projectDirectory,
+  defaultPort: Number(port),
+}, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+' "$temporary_launcher_metadata" "$slug.sh" "$project_name" "$project_directory" "$host_port"
+
 chmod 755 "$temporary_launcher"
 mv -f -- "$temporary_launcher" "$launcher_path"
+mv -f -- "$temporary_launcher_metadata" "$launcher_metadata_path"
 trap - EXIT
 
 if [[ "$launcher_only" == true ]]; then

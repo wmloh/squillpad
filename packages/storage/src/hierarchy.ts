@@ -13,6 +13,7 @@ import {
   isSectionColor,
   isSynchronizedInkColors,
   readMarkdownBoxAppearance,
+  mergePortableProjectSettings,
   type CanvasRecord,
   type AutosaveIntervalSeconds,
   type LaserPointerSettings,
@@ -21,6 +22,7 @@ import {
   type NotebookHierarchy,
   type NotebookManifest,
   type PageManifest,
+  type PortableProjectSettings,
   type SectionManifest,
   type SynchronizedInkColors,
   withMarkdownBoxAppearance,
@@ -181,6 +183,17 @@ export class ProjectHierarchyService {
           ...notebook.settings,
           metadata: withAutosaveIntervalSeconds(notebook.settings.metadata, seconds),
         },
+      });
+    });
+  }
+
+  /** Atomically imports the explicitly portable project-wide settings. */
+  importProjectSettings(settings: PortableProjectSettings): Promise<NotebookHierarchy> {
+    return this.#mutate(async () => {
+      const notebook = await this.#session.loadNotebook();
+      await this.#session.saveNotebook({
+        ...notebook,
+        settings: mergePortableProjectSettings(notebook.settings, settings),
       });
     });
   }

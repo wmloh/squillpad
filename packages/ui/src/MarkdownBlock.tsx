@@ -20,10 +20,12 @@ import {
 import {
   useEffect,
   useLayoutEffect,
+  memo,
   useRef,
   useState,
   type ComponentProps,
   type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
@@ -142,6 +144,76 @@ function addMarkdownHeadingIds(node: MarkdownAstNode): void {
     }
   }
   node.children?.forEach(addMarkdownHeadingIds);
+}
+
+const MARKDOWN_CARET_TARGET_TYPES = new Set([
+  "heading",
+  "paragraph",
+  "math",
+  "inlineMath",
+  "code",
+  "inlineCode",
+  "listItem",
+  "blockquote",
+  "tableCell",
+]);
+
+/** Keeps edit locations on rendered constructs without changing notebook source. */
+function remarkMarkdownEditPositions() {
+  return (tree: MarkdownAstNode): void => {
+    addMarkdownEditPositions(tree);
+  };
+}
+
+function addMarkdownEditPositions(node: MarkdownAstNode): void {
+  const endOffset = node.position?.end?.offset;
+  if (MARKDOWN_CARET_TARGET_TYPES.has(node.type) && endOffset !== undefined) {
+    node.data = {
+      ...node.data,
+      hProperties: {
+        ...node.data?.hProperties,
+        "data-markdown-source-end": String(endOffset),
+      },
+    };
+  }
+  node.children?.forEach(addMarkdownEditPositions);
+}
+
+/** KaTeX replaces math nodes, so retain their source ends on a surrounding element. */
+function rehypeWrapMarkdownMath() {
+  return (tree: MarkdownAstNode): void => {
+    wrapMarkdownMath(tree);
+  };
+}
+
+function wrapMarkdownMath(node: MarkdownAstNode): void {
+  if (node.children === undefined) return;
+  node.children = node.children.map((child) => {
+    let mathCode: MarkdownAstNode | undefined;
+    if (child.tagName === "pre") mathCode = child.children?.find(isMarkdownMathCode);
+    else if (isMarkdownMathCode(child)) mathCode = child;
+    const endOffset = child.properties?.["data-markdown-source-end"] ??
+      mathCode?.properties?.["data-markdown-source-end"];
+    if (mathCode !== undefined && endOffset !== undefined) {
+      return {
+        type: "element",
+        tagName: child.tagName === "pre" ? "div" : "span",
+        properties: {
+          className: ["markdown-math-source-position"],
+          "data-markdown-source-end": endOffset,
+        },
+        children: [child],
+      };
+    }
+    wrapMarkdownMath(child);
+    return child;
+  });
+}
+
+function isMarkdownMathCode(node: MarkdownAstNode): boolean {
+  if (node.tagName !== "code") return false;
+  const className = node.properties?.className;
+  return Array.isArray(className) && className.includes("language-math");
 }
 
 /** Converts `==text==` spans to semantic HTML marks after Markdown parsing. */
@@ -276,8 +348,62 @@ function isTrailingMarkdownHardBreak(node: MarkdownAstNode, source: string): boo
 }
 
 const SAFE_LINK_PROTOCOLS = new Set(["http:", "https:"]);
+const MARKDOWN_EDITOR_LAYOUT_PREFIX = "squillpad:markdown-editor-layout:";
+
+interface MarkdownEditorLayout {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+function readMarkdownEditorLayout(key: string): MarkdownEditorLayout | undefined {
+  try {
+    const raw = window.sessionStorage.getItem(MARKDOWN_EDITOR_LAYOUT_PREFIX + key);
+    if (raw === null) return undefined;
+    const value: unknown = JSON.parse(raw);
+    if (value === null || typeof value !== "object") return undefined;
+    const layout = value as Record<string, unknown>;
+    if ([layout.left, layout.top, layout.width, layout.height].some((part) => typeof part !== "number" || !Number.isFinite(part)))
+      return undefined;
+    return layout as unknown as MarkdownEditorLayout;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeMarkdownEditorLayout(key: string, layout: MarkdownEditorLayout): void {
+  try {
+    window.sessionStorage.setItem(MARKDOWN_EDITOR_LAYOUT_PREFIX + key, JSON.stringify(layout));
+  } catch {
+    // Editing stays available when session storage is disabled or full.
+  }
+}
+
+function clampMarkdownEditorLayout(layout: MarkdownEditorLayout, surfaceWidth: number, surfaceHeight: number): MarkdownEditorLayout {
+  const width = Math.min(Math.max(layout.width, Math.min(280, surfaceWidth)), surfaceWidth);
+  const height = Math.min(Math.max(layout.height, Math.min(180, surfaceHeight)), surfaceHeight);
+  return {
+    left: Math.min(Math.max(layout.left, 0), Math.max(0, surfaceWidth - width)),
+    top: Math.min(Math.max(layout.top, 0), Math.max(0, surfaceHeight - height)),
+    width,
+    height,
+  };
+}
+
+function markdownEditorLayoutsDiffer(a: MarkdownEditorLayout, b: MarkdownEditorLayout): boolean {
+  return (
+    Math.abs(a.left - b.left) > 0.5 ||
+    Math.abs(a.top - b.top) > 0.5 ||
+    Math.abs(a.width - b.width) > 0.5 ||
+    Math.abs(a.height - b.height) > 0.5
+  );
+}
+
 
 export interface MarkdownBlockProps {
+  readonly editorLayoutKey?: string;
+  readonly captureDoubleClickCaret?: boolean;
   readonly activeSearchMatch?: number;
   readonly boxOpacity: number;
   readonly editing: boolean;
@@ -310,7 +436,7 @@ export interface MarkdownPreviewProps {
   readonly source: string;
 }
 
-export function MarkdownPreview({
+export const MarkdownPreview = memo(function MarkdownPreview({
   activeSearchMatch,
   contentRef,
   searchMatchOffset = 0,
@@ -333,10 +459,12 @@ export function MarkdownPreview({
             remarkMarkdownHeadingIds,
             remarkSingleLineDisplayMath,
             remarkMarkdownHardBreaks,
+            remarkMarkdownEditPositions,
           ]}
           rehypePlugins={[
             [rehypeHighlight, { detect: true }],
             rehypeMarkdownHighlights,
+            rehypeWrapMarkdownMath,
             [rehypeKatex, KATEX_OPTIONS],
             ...(searchPlugin === undefined ? [] : [searchPlugin]),
           ]}
@@ -348,7 +476,7 @@ export function MarkdownPreview({
       )}
     </div>
   );
-}
+});
 
 function createMarkdownSearchPlugin(
   query: string,
@@ -455,6 +583,8 @@ function isExternalHttpUrl(value: string): boolean {
 
 /** Source editor and rendered view for one spatial Markdown object. */
 export function MarkdownBlock({
+  editorLayoutKey,
+  captureDoubleClickCaret = false,
   activeSearchMatch,
   boxOpacity,
   editing,
@@ -480,10 +610,106 @@ export function MarkdownBlock({
   const blockRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
-  const [editorPhase, setEditorPhase] = useState<MarkdownEditorPhase>(
-    editing ? "opening" : "closed",
+  const pendingCaretOffsetRef = useRef<number | undefined>(undefined);
+  const onHeightChangeRef = useRef(onHeightChange);
+  onHeightChangeRef.current = onHeightChange;
+  const [editorLayout, setEditorLayout] = useState<MarkdownEditorLayout | undefined>(() =>
+    editing && editorLayoutKey !== undefined ? readMarkdownEditorLayout(editorLayoutKey) : undefined,
   );
+  const editorDragRef = useRef<
+    | {
+        pointerId: number;
+        mode: "move" | "resize";
+        startX: number;
+        startY: number;
+        layout: MarkdownEditorLayout;
+        changed: boolean;
+      }
+    | undefined
+  >(undefined);
+  const [editorPhase, setEditorPhase] = useState<MarkdownEditorPhase>(editing ? "opening" : "closed");
 
+  useLayoutEffect(() => {
+    if (editing) setEditorLayout(editorLayoutKey === undefined ? undefined : readMarkdownEditorLayout(editorLayoutKey));
+  }, [editing, editorLayoutKey]);
+
+  useEffect(() => {
+    if (!editing) pendingCaretOffsetRef.current = undefined;
+  }, [editing]);
+
+  const editorSurface = () => {
+    const editor = editorRef.current;
+    return editorPortalTarget ?? (editor?.offsetParent instanceof HTMLElement ? editor.offsetParent : blockRef.current?.parentElement);
+  };
+  const editorBounds = (): MarkdownEditorLayout | undefined => {
+    const editor = editorRef.current;
+    const surface = editorSurface();
+    if (editor === null || surface === null || surface === undefined) return undefined;
+    const rect = editor.getBoundingClientRect();
+    const parent = surface.getBoundingClientRect();
+    return {
+      left: rect.left - parent.left,
+      top: rect.top - parent.top,
+      width: rect.width,
+      height: rect.height,
+    };
+  };
+  const applyEditorLayout = (layout: MarkdownEditorLayout) => {
+    const editor = editorRef.current;
+    if (editor === null) return;
+    editor.classList.add("is-custom-layout");
+    editor.style.left = `${layout.left}px`;
+    editor.style.top = `${layout.top}px`;
+    editor.style.width = `${layout.width}px`;
+    editor.style.height = `${layout.height}px`;
+  };
+  const saveEditorLayout = (layout: MarkdownEditorLayout) => {
+    setEditorLayout(layout);
+    if (editorLayoutKey !== undefined) writeMarkdownEditorLayout(editorLayoutKey, layout);
+  };
+  const startEditorDrag = (event: ReactPointerEvent<HTMLElement>, mode: "move" | "resize") => {
+    if (event.button !== 0 || editorPhase !== "open") return;
+    const bounds = editorBounds();
+    if (bounds === undefined) return;
+    event.preventDefault();
+    event.stopPropagation();
+    editorDragRef.current = {
+      pointerId: event.pointerId,
+      mode,
+      startX: event.clientX,
+      startY: event.clientY,
+      layout: bounds,
+      changed: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+  const moveEditorDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    const drag = editorDragRef.current;
+    const surface = editorSurface();
+    if (drag?.pointerId !== event.pointerId || surface === null || surface === undefined) return;
+    const next = clampMarkdownEditorLayout(
+      {
+        ...drag.layout,
+        left: drag.mode === "move" ? drag.layout.left + event.clientX - drag.startX : drag.layout.left,
+        top: drag.mode === "move" ? drag.layout.top + event.clientY - drag.startY : drag.layout.top,
+        width: drag.mode === "resize" ? drag.layout.width + event.clientX - drag.startX : drag.layout.width,
+        height: drag.mode === "resize" ? drag.layout.height + event.clientY - drag.startY : drag.layout.height,
+      },
+      surface.clientWidth,
+      surface.clientHeight,
+    );
+    if (!markdownEditorLayoutsDiffer(next, drag.layout)) return;
+    drag.changed = true;
+    applyEditorLayout(next);
+  };
+  const finishEditorDrag = (event: ReactPointerEvent<HTMLElement>) => {
+    if (editorDragRef.current?.pointerId !== event.pointerId) return;
+    const changed = editorDragRef.current.changed;
+    editorDragRef.current = undefined;
+    if (!changed) return;
+    const bounds = editorBounds();
+    if (bounds !== undefined) saveEditorLayout(bounds);
+  };
   useEffect(() => {
     if (editing) {
       setEditorPhase((current) =>
@@ -521,13 +747,13 @@ export function MarkdownBlock({
         verticalPadding,
         verticalBorder,
       );
-      if (height !== undefined) onHeightChange(height);
+      if (height !== undefined) onHeightChangeRef.current(height);
     };
     report();
     const observer = new ResizeObserver(report);
     observer.observe(content);
     return () => observer.disconnect();
-  }, [editing, fontSize, onHeightChange, source]);
+  }, [editing, fontSize, source]);
 
   useLayoutEffect(() => {
     if (editorPhase === "closed") return;
@@ -545,7 +771,7 @@ export function MarkdownBlock({
     const previousTransform = editor.style.transform;
     editor.style.animation = "none";
     editor.style.transform =
-      "translate3d(var(--markdown-editor-anchor-x), calc(-50% + var(--markdown-editor-keyboard-offset-y)), 0) scale(1)";
+      "translate3d(var(--markdown-editor-anchor-x), calc(var(--markdown-editor-anchor-y, -50%) + var(--markdown-editor-keyboard-offset-y)), 0) scale(1)";
     const blockRect = block.getBoundingClientRect();
     const editorRect = editor.getBoundingClientRect();
     editor.style.animation = previousAnimation;
@@ -569,7 +795,21 @@ export function MarkdownBlock({
       "--markdown-editor-origin-scale-y",
       String(blockRect.height / editorRect.height),
     );
-  }, [editorPhase, editorPortalTarget]);
+  }, [editorPhase, editorPortalTarget, editorLayout]);
+
+  useLayoutEffect(() => {
+    if (editorPhase === "closed" || editorLayout === undefined) return;
+    const editor = editorRef.current;
+    const surface = editorPortalTarget ??
+      (editor?.offsetParent instanceof HTMLElement ? editor.offsetParent : blockRef.current?.parentElement);
+    if (surface === null || surface === undefined) return;
+    const update = () => applyEditorLayout(clampMarkdownEditorLayout(editorLayout, surface.clientWidth, surface.clientHeight));
+    update();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(update);
+    observer.observe(surface);
+    return () => observer.disconnect();
+  }, [editorPhase, editorLayout, editorPortalTarget]);
 
   useEffect(() => {
     if (editorPhase === "closed") return;
@@ -657,7 +897,17 @@ export function MarkdownBlock({
   const editor = (
     <div
       ref={editorRef}
-      className={`markdown-editor-popover is-${editorPhase}`}
+      className={`markdown-editor-popover is-${editorPhase}${editorLayout === undefined ? "" : " is-custom-layout"}`}
+      style={
+        editorLayout === undefined
+          ? undefined
+          : {
+              left: editorLayout.left,
+              top: editorLayout.top,
+              width: editorLayout.width,
+              height: editorLayout.height,
+            }
+      }
       role="dialog"
       aria-label="Markdown source editor"
       data-canvas-editor="active"
@@ -673,6 +923,13 @@ export function MarkdownBlock({
       }}
     >
       <CodeMirrorEditor
+        {...(!editing || pendingCaretOffsetRef.current === undefined
+          ? {}
+          : { initialCaretOffset: pendingCaretOffsetRef.current })}
+        editorPhase={editorPhase}
+        onMovePointerDown={(event) => startEditorDrag(event, "move")}
+        onMovePointerMove={moveEditorDrag}
+        onMovePointerUp={finishEditorDrag}
         source={source}
         onChange={onChange}
         onCommit={onCommit}
@@ -684,6 +941,16 @@ export function MarkdownBlock({
         colorStyles={colorStyles}
         {...(markdownStyleId === undefined ? {} : { markdownStyleId })}
         {...(onMarkdownStyleChange === undefined ? {} : { onMarkdownStyleChange })}
+      />
+      <button
+        className="markdown-editor-resize-handle"
+        type="button"
+        aria-label="Resize Markdown editor"
+        title="Drag to resize Markdown editor"
+        onPointerDown={(event) => startEditorDrag(event, "resize")}
+        onPointerMove={moveEditorDrag}
+        onPointerUp={finishEditorDrag}
+        onPointerCancel={finishEditorDrag}
       />
     </div>
   );
@@ -708,7 +975,23 @@ export function MarkdownBlock({
         } as CSSProperties
       }
     >
-      <div className="markdown-preview-layer" aria-hidden={editing || undefined}>
+      <div
+        className="markdown-preview-layer"
+        aria-hidden={editing || undefined}
+        onDoubleClickCapture={(event) => {
+          if (!captureDoubleClickCaret || editing) return;
+          const target = event.target instanceof Element ? event.target : null;
+          const marked = target?.closest<HTMLElement>("[data-markdown-source-end]");
+          if (marked === undefined || marked === null || !contentRef.current?.contains(marked)) {
+            pendingCaretOffsetRef.current = source.length;
+            return;
+          }
+          const rawOffset = Number(marked.dataset.markdownSourceEnd);
+          pendingCaretOffsetRef.current = Number.isFinite(rawOffset)
+            ? Math.max(0, Math.min(rawOffset, source.length))
+            : source.length;
+        }}
+      >
         <MarkdownPreview
           contentRef={contentRef}
           source={source}
@@ -821,6 +1104,11 @@ function MarkdownCloseIcon() {
 }
 
 function CodeMirrorEditor({
+  initialCaretOffset,
+  editorPhase,
+  onMovePointerDown,
+  onMovePointerMove,
+  onMovePointerUp,
   onChange,
   onCommit,
   onFinishEditing,
@@ -833,6 +1121,11 @@ function CodeMirrorEditor({
   markdownStyleId,
   onMarkdownStyleChange,
 }: {
+  readonly initialCaretOffset?: number;
+  readonly editorPhase: MarkdownEditorPhase;
+  readonly onMovePointerDown: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  readonly onMovePointerMove: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  readonly onMovePointerUp: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   readonly onChange: (source: string) => void;
   readonly onCommit: (source: string) => void;
   readonly onFinishEditing: () => void;
@@ -870,6 +1163,13 @@ function CodeMirrorEditor({
       parent: host,
       state: EditorState.create({
         doc: initialSourceRef.current,
+        ...(initialCaretOffset === undefined
+          ? {}
+          : {
+              selection: {
+                anchor: Math.max(0, Math.min(initialCaretOffset, initialSourceRef.current.length)),
+              },
+            }),
         extensions: [
           MARKDOWN_EDITOR_SETUP,
           markdown(),
@@ -941,6 +1241,56 @@ function CodeMirrorEditor({
     };
   }, []);
 
+  useLayoutEffect(() => {
+    const view = viewRef.current;
+    if (view === undefined || initialCaretOffset === undefined) return;
+    const anchor = Math.max(0, Math.min(initialCaretOffset, view.state.doc.length));
+    view.dispatch({
+      selection: { anchor },
+      effects: EditorView.scrollIntoView(anchor, { y: "center" }),
+      scrollIntoView: true,
+    });
+    view.focus();
+  }, [initialCaretOffset]);
+
+  useEffect(() => {
+    if (editorPhase !== "open" || initialCaretOffset === undefined) return;
+    const view = viewRef.current;
+    if (view === undefined) return;
+    const anchor = Math.max(0, Math.min(initialCaretOffset, view.state.doc.length));
+    let frame: number;
+    let attempts = 0;
+    // Wrapped lines in a long document can change CodeMirror's height estimate after the first scroll.
+    const revealCaret = () => {
+      if (viewRef.current !== view) return;
+      if (view.state.selection.main.head !== anchor) return;
+      const caret = view.coordsAtPos(anchor);
+      const viewport = view.scrollDOM.getBoundingClientRect();
+      if (caret !== null) {
+        const offsetFromCenter = (caret.top + caret.bottom) / 2 - viewport.top - viewport.height / 2;
+        const atStart = view.scrollDOM.scrollTop <= 1;
+        const atEnd = view.scrollDOM.scrollTop >= view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight - 1;
+        if (
+          caret.top >= viewport.top + 8 &&
+          caret.bottom <= viewport.bottom - 8 &&
+          (Math.abs(offsetFromCenter) <= viewport.height * 0.2 ||
+            (offsetFromCenter < 0 && atStart) ||
+            (offsetFromCenter > 0 && atEnd))
+        ) {
+          return;
+        }
+        if (attempts++ >= 16) return;
+        view.scrollDOM.scrollTop += offsetFromCenter;
+      } else {
+        if (attempts++ >= 16) return;
+        view.dispatch({ effects: EditorView.scrollIntoView(anchor, { y: "center" }) });
+      }
+      frame = window.requestAnimationFrame(revealCaret);
+    };
+    frame = window.requestAnimationFrame(revealCaret);
+    return () => window.cancelAnimationFrame(frame);
+  }, [editorPhase, initialCaretOffset]);
+
   const finishEditing = () => {
     onCommit(viewRef.current?.state.doc.toString() ?? source);
     onFinishEditing();
@@ -970,7 +1320,18 @@ function CodeMirrorEditor({
   return (
     <>
       <div className="markdown-editor-heading">
-        <span>Markdown source</span>
+        <button
+          className="markdown-editor-move-handle"
+          type="button"
+          aria-label="Move Markdown editor"
+          title="Drag to move Markdown editor"
+          onPointerDown={onMovePointerDown}
+          onPointerMove={onMovePointerMove}
+          onPointerUp={onMovePointerUp}
+          onPointerCancel={onMovePointerUp}
+        >
+          Markdown source
+        </button>
         <div className="markdown-editor-actions">
           <button
             className="markdown-editor-history-button"

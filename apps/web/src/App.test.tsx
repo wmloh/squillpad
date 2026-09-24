@@ -6,6 +6,9 @@ import { EditorView } from "@codemirror/view";
 
 import {
   CANONICAL_SCHEMA_VERSION,
+  DEFAULT_AUTOSAVE_INTERVAL_SECONDS,
+  DEFAULT_LASER_POINTER_SETTINGS,
+  DEFAULT_MARKDOWN_BOX_APPEARANCE,
   MARKDOWN_COLOR_KEYS,
   type CanvasElement,
   type NotebookHierarchy,
@@ -39,6 +42,7 @@ import {
   synchronizationStatusTooltip,
 } from "./App";
 import { AppChrome, type AppChromeProps } from "./AppChrome";
+import { AppSettings, type AppSettingsProps } from "./AppSettings";
 import { ConnectionScreen } from "./ConnectionScreen";
 import type { RepositorySynchronizationHandle } from "./RepositorySynchronization";
 import mathFixture from "./test-fixtures/math.md?raw";
@@ -120,9 +124,56 @@ function appChromeProps(hostSession: boolean): AppChromeProps {
   };
 }
 
+function appSettingsProps(hostSession: boolean): AppSettingsProps {
+  return {
+    detailsRef: createRef<HTMLDetailsElement>(),
+    markdownBoxAppearance: DEFAULT_MARKDOWN_BOX_APPEARANCE,
+    textScalePercent: 100,
+    laserPointerSettings: DEFAULT_LASER_POINTER_SETTINGS,
+    keyboardPanSpeedMultiplier: 1,
+    autosaveIntervalSeconds: DEFAULT_AUTOSAVE_INTERVAL_SECONDS,
+    drawingPreferences: DEFAULT_DRAWING_PREFERENCES,
+    palmRejection: false,
+    canvasToolbarHeightDraft: "44",
+    authenticatedUsername: "owner",
+    applicationPageBackground: "grid",
+    hostSession,
+    clientReadOnly: false,
+    busy: false,
+    profileSettingsImportRef: createRef<HTMLInputElement>(),
+    projectSettingsImportRef: createRef<HTMLInputElement>(),
+    onMarkdownBoxAppearanceChange: () => undefined,
+    onTextScalePercentChange: () => undefined,
+    onLaserPointerSettingsChange: () => undefined,
+    onKeyboardPanSpeedMultiplierChange: () => undefined,
+    onAutosaveIntervalChange: () => undefined,
+    onPenDrawsTouchNavigatesChange: () => undefined,
+    onPalmRejectionChange: () => undefined,
+    onCanvasToolbarHeightDraftChange: () => undefined,
+    onCanvasToolbarHeightCommit: () => undefined,
+    onPageBackgroundChange: () => undefined,
+    onExportProfileSettings: () => undefined,
+    onImportProfileSettings: () => undefined,
+    onExportProjectSettings: () => undefined,
+    onImportProjectSettings: () => undefined,
+  };
+}
+
 describe("App", () => {
   it("is a renderable component", () => {
     expect(typeof App).toBe("function");
+  });
+
+  it("shows project-settings transfer controls only for the host", () => {
+    const hostHtml = renderToStaticMarkup(<AppSettings {...appSettingsProps(true)} />);
+    const clientHtml = renderToStaticMarkup(<AppSettings {...appSettingsProps(false)} />);
+
+    expect(hostHtml).toContain("Project settings");
+    expect(hostHtml).toContain("Export project");
+    expect(hostHtml).toContain("Import project");
+    expect(clientHtml).not.toContain("Project settings");
+    expect(clientHtml).not.toContain("Export project");
+    expect(clientHtml).not.toContain("Import project");
   });
 
   it("renders a dismissible host-stopped notification", () => {
@@ -647,6 +698,16 @@ describe("App", () => {
 
       localStorage.setItem(
         DRAWING_PREFERENCES_KEY,
+        JSON.stringify({ ...DEFAULT_DRAWING_PREFERENCES, lastTool: "eraser" }),
+      );
+      const eraser = renderToStaticMarkup(<SpatialCanvas pageId={PAGE_ID} />);
+      expect(eraser).toContain('aria-label="Eraser thickness"');
+      expect(eraser).toContain('min="2"');
+      expect(eraser).toContain('max="30"');
+      expect(eraser).toContain('step="1"');
+
+      localStorage.setItem(
+        DRAWING_PREFERENCES_KEY,
         JSON.stringify({ ...DEFAULT_DRAWING_PREFERENCES, lastTool: "rectangle" }),
       );
       const shape = renderToStaticMarkup(<SpatialCanvas pageId={PAGE_ID} />);
@@ -731,12 +792,12 @@ describe("App", () => {
       />,
     );
 
-    expect(html).toContain("<h1>Heading</h1>");
+    expect(html).toContain('<h1 data-markdown-source-end="9">Heading</h1>');
     expect(html).toContain("<em>emphasis</em>");
-    expect(html).toContain("<blockquote>");
+    expect(html).toContain('<blockquote data-markdown-source-end="30">');
     expect(html).toContain("<ul>");
     expect(html).toContain('href="https://example.com/"');
-    expect(html).toMatch(/<code class="[^"]*hljs[^"]*language-ts[^"]*">/);
+    expect(html).toMatch(/<code class="[^"]*hljs[^"]*language-ts[^"]*" data-markdown-source-end="\d+">/);
     expect(html).toContain('<span class="hljs-keyword">const</span>');
     expect(html).toContain("<table>");
   });
@@ -756,7 +817,7 @@ describe("App", () => {
       />,
     );
 
-    expect(html).toContain('<h1 id="custom-id">Heading</h1>');
+    expect(html).toContain('<h1 id="custom-id" data-markdown-source-end="22">Heading</h1>');
     expect(html).toContain('<mark class="markdown-highlight">Important</mark>');
     expect(html).toContain('class="footnotes"');
     expect(html).toContain("Footnote text");
@@ -775,6 +836,37 @@ describe("App", () => {
     expect(html).toContain('data-markdown-search-match="0"');
     expect(html).toContain('data-markdown-search-match="1"');
     expect(html).toContain("markdown-search-match is-active");
+  });
+
+  it("refreshes the Markdown preview when source or active search changes", () => {
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    try {
+      act(() => {
+        root.render(
+          <MarkdownPreview source="Alpha alpha" searchQuery="alpha" activeSearchMatch={0} />,
+        );
+      });
+      expect(container.querySelector(".markdown-search-match.is-active")?.textContent).toBe(
+        "Alpha",
+      );
+
+      act(() => {
+        root.render(
+          <MarkdownPreview source="Alpha alpha" searchQuery="alpha" activeSearchMatch={1} />,
+        );
+      });
+      expect(container.querySelector(".markdown-search-match.is-active")?.textContent).toBe(
+        "alpha",
+      );
+
+      act(() => {
+        root.render(<MarkdownPreview source="Beta" searchQuery="alpha" />);
+      });
+      expect(container.querySelector(".markdown-content")?.textContent).toBe("Beta");
+    } finally {
+      act(() => root.unmount());
+    }
   });
 
   it("renders each Markdown hard break inserted for blank space", () => {
@@ -801,6 +893,24 @@ describe("App", () => {
     expect(html).toContain("\\begin{aligned}");
     expect(mathFixture).toContain("$\\alpha^2 + \\beta_i = \\gamma$");
     expect(mathFixture).toContain("$$\n\\int_{-\\infty}^{\\infty}");
+  });
+
+  it("marks source ends for headings, paragraphs, and math expressions", () => {
+    const source = "# First\n\nA $x^2$ tail\n\n$$y = mx + b$$\n\n## Later";
+    const container = document.createElement("div");
+    container.innerHTML = renderToStaticMarkup(<MarkdownPreview source={source} />);
+    const sourceEndFor = (selector: string) =>
+      container.querySelector(selector)?.closest("[data-markdown-source-end]")
+        ?.getAttribute("data-markdown-source-end");
+
+    expect(sourceEndFor("h1")).toBe(String(source.indexOf("\n\n")));
+    expect(sourceEndFor("p")).toBe(String(source.indexOf("\n\n$$")));
+    expect(sourceEndFor(".katex:not(.katex-display)")).toBe(String(source.indexOf("$ tail") + 1));
+    expect(sourceEndFor(".katex-display")).toBe(String(source.indexOf("$$\n\n##") + 2));
+
+    const multilineSource = "$$\ny = mx + b\n$$\n\nAfter";
+    container.innerHTML = renderToStaticMarkup(<MarkdownPreview source={multilineSource} />);
+    expect(sourceEndFor(".katex-display")).toBe(String(multilineSource.indexOf("\n\nAfter")));
   });
 
   it("keeps the rendered block visible behind the floating Markdown editor", () => {
@@ -904,7 +1014,7 @@ describe("App", () => {
     expect(html).not.toContain("Create text box group");
   });
 
-  it("measures intrinsic Markdown content instead of the self-sized block", async () => {
+  it("measures intrinsic Markdown content instead of the self-sized block", () => {
     const testGlobals = globalThis as typeof globalThis & {
       IS_REACT_ACT_ENVIRONMENT?: boolean | undefined;
     };
@@ -919,7 +1029,13 @@ describe("App", () => {
     );
     const observed: Element[] = [];
     const heights: number[] = [];
+    const updatedHeights: number[] = [];
+    let notifyResize: (() => void) | undefined;
     globalThis.ResizeObserver = class {
+      constructor(callback: ResizeObserverCallback) {
+        notifyResize = () => callback([], this as unknown as ResizeObserver);
+      }
+
       observe(target: Element) {
         observed.push(target);
       }
@@ -928,14 +1044,14 @@ describe("App", () => {
     } as unknown as typeof ResizeObserver;
     Object.defineProperty(HTMLElement.prototype, "scrollHeight", {
       configurable: true,
-      get() {
+      get(this: HTMLElement) {
         return this.classList.contains("markdown-content") ? 80 : 100_000;
       },
     });
 
     try {
       document.body.append(container);
-      await act(async () => {
+      act(() => {
         root.render(
           <MarkdownBlock
             boxOpacity={1}
@@ -952,8 +1068,26 @@ describe("App", () => {
       expect(content).not.toBeNull();
       expect(heights).toEqual([80]);
       expect(observed).toEqual([content]);
+      act(() => {
+        root.render(
+          <MarkdownBlock
+            boxOpacity={1}
+            editing={false}
+            source={"- [ ] a\n  \n- [ ] b"}
+            onChange={() => undefined}
+            onCommit={() => undefined}
+            onFinishEditing={() => undefined}
+            onHeightChange={(height) => updatedHeights.push(height)}
+          />,
+        );
+      });
+      expect(observed).toEqual([content]);
+      expect(heights).toEqual([80]);
+      expect(updatedHeights).toEqual([]);
+      act(() => notifyResize?.());
+      expect(updatedHeights).toEqual([80]);
     } finally {
-      await act(async () => root.unmount());
+      act(() => root.unmount());
       container.remove();
       globalThis.ResizeObserver = resizeObserver;
       if (scrollHeightDescriptor === undefined) {

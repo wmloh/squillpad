@@ -19,8 +19,8 @@ export const REPOSITORY_OPERATION_CLOSE_CODE = 4423;
 export const REPOSITORY_OPERATION_CLOSE_REASON = "Repository snapshot operation in progress";
 export const PROJECT_RELOADED_CLOSE_CODE = 4409;
 export const PROJECT_RELOADED_CLOSE_REASON = "Project snapshot replaced";
-const REPOSITORY_RECONNECT_INITIAL_DELAY_MS = 250;
-const REPOSITORY_RECONNECT_MAX_DELAY_MS = 5_000;
+const RECONNECT_INITIAL_DELAY_MS = 250;
+const RECONNECT_MAX_DELAY_MS = 5_000;
 
 export interface PagePresence {
   readonly clientId: number;
@@ -46,8 +46,8 @@ export class PageSyncClient {
   readonly #listeners = new Set<(status: SynchronizationStatus) => void>();
   readonly #offlineHandler: (() => void) | undefined;
   readonly #onlineHandler: (() => void) | undefined;
-  #repositoryReconnectTimer: ReturnType<typeof setTimeout> | undefined;
-  #repositoryReconnectDelayMs = REPOSITORY_RECONNECT_INITIAL_DELAY_MS;
+  #reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  #reconnectDelayMs = RECONNECT_INITIAL_DELAY_MS;
   #clientOffline = false;
   #hostDisconnected = false;
   #hostStopped = false;
@@ -73,13 +73,16 @@ export class PageSyncClient {
     this.provider.on("status", ({ status }: { status: string }) => {
       if (this.#hostStopped || this.#projectReloaded) return;
       if (status === "connected") {
-        this.#repositoryReconnectDelayMs = REPOSITORY_RECONNECT_INITIAL_DELAY_MS;
+        this.#reconnectDelayMs = RECONNECT_INITIAL_DELAY_MS;
+        this.#clearReconnectTimer();
       }
       const next = status === "connecting" || status === "connected" ? "connecting" : "offline";
       if (next === "offline" && this.#hostDisconnected && !this.#clientOffline) {
         this.#setStatus("host-disconnected");
+        this.#scheduleReconnect();
         return;
       }
+      if (next === "offline" && !this.#clientOffline) this.#scheduleReconnect();
       this.#setStatus(next);
     });
     this.provider.on("sync", (synced: boolean) => {
@@ -92,6 +95,7 @@ export class PageSyncClient {
       if (!this.#hostStopped && !this.#projectReloaded) {
         this.#hostDisconnected = true;
         this.#setStatus("host-disconnected");
+        this.#scheduleReconnect();
       }
     });
     this.provider.on("closed", (event: { readonly code: number; readonly reason: string }) => {
@@ -114,11 +118,12 @@ export class PageSyncClient {
       }
       if (event.code === REPOSITORY_OPERATION_CLOSE_CODE) {
         this.#setStatus("connecting");
-        this.#scheduleRepositoryReconnect();
+        this.#scheduleReconnect();
         return;
       }
       this.#hostDisconnected = true;
       this.#setStatus("host-disconnected");
+      this.#scheduleReconnect();
     });
     if (typeof window === "undefined") {
       this.#offlineHandler = undefined;
@@ -128,6 +133,7 @@ export class PageSyncClient {
         if (this.#hostStopped || this.#projectReloaded) return;
         this.#clientOffline = true;
         this.#hostDisconnected = false;
+        this.#clearReconnectTimer();
         this.provider.disconnect();
         this.#setStatus("offline");
       };
@@ -180,10 +186,7 @@ export class PageSyncClient {
   }
 
   destroy(): void {
-    if (this.#repositoryReconnectTimer !== undefined) {
-      clearTimeout(this.#repositoryReconnectTimer);
-      this.#repositoryReconnectTimer = undefined;
-    }
+    this.#clearReconnectTimer();
     if (typeof window !== "undefined") {
       if (this.#offlineHandler !== undefined)
         window.removeEventListener("offline", this.#offlineHandler);
@@ -201,14 +204,20 @@ export class PageSyncClient {
     for (const listener of this.#listeners) listener(status);
   }
 
-  #scheduleRepositoryReconnect(): void {
-    if (this.#repositoryReconnectTimer !== undefined) return;
-    const delay = this.#repositoryReconnectDelayMs;
-    this.#repositoryReconnectDelayMs = Math.min(delay * 2, REPOSITORY_RECONNECT_MAX_DELAY_MS);
-    this.#repositoryReconnectTimer = setTimeout(() => {
-      this.#repositoryReconnectTimer = undefined;
+  #scheduleReconnect(): void {
+    if (this.#reconnectTimer !== undefined) return;
+    const delay = this.#reconnectDelayMs;
+    this.#reconnectDelayMs = Math.min(delay * 2, RECONNECT_MAX_DELAY_MS);
+    this.#reconnectTimer = setTimeout(() => {
+      this.#reconnectTimer = undefined;
       if (this.#hostStopped || this.#projectReloaded) return;
       this.provider.connect();
     }, delay);
+  }
+
+  #clearReconnectTimer(): void {
+    if (this.#reconnectTimer === undefined) return;
+    clearTimeout(this.#reconnectTimer);
+    this.#reconnectTimer = undefined;
   }
 }

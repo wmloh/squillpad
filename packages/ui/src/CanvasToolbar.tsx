@@ -81,6 +81,7 @@ export interface CanvasToolbarProps {
   readonly inkWidthForControls: number;
   readonly inkDimensionLabel: string;
   readonly inkDimensionAriaLabel: string;
+  readonly eraserWidthForControls: number;
   readonly hasGroupedSelection: boolean;
   readonly markdownColorStyles: MarkdownColorStyleLibrary;
   readonly markdownSearchControlled: boolean;
@@ -169,6 +170,7 @@ export function CanvasToolbar({
   inkWidthForControls,
   inkDimensionLabel,
   inkDimensionAriaLabel,
+  eraserWidthForControls,
   hasGroupedSelection,
   markdownColorStyles,
   markdownSearchControlled,
@@ -344,7 +346,7 @@ export function CanvasToolbar({
           aria-pressed={tool === "pan"}
           aria-keyshortcuts="M"
           aria-label="Hand"
-          title="Hand (M; hold Space temporarily)"
+          title="Hand (M; hold Space to drag or scroll; add Shift to scroll sideways)"
           onClick={() => onToolChange("pan")}
         >
           <HandToolIcon />
@@ -679,6 +681,26 @@ export function CanvasToolbar({
       )}
       {tool === "eraser" && (
         <div className="tool-group" role="group" aria-label="Eraser style">
+          <label className="range-control">
+            <span>Thickness</span>
+            <input
+              aria-label="Eraser thickness"
+              title="Eraser thickness"
+              type="range"
+              min={INK_WIDTH_MIN}
+              max={INK_WIDTH_MAX}
+              step="1"
+              value={eraserWidthForControls}
+              disabled={readOnly}
+              onChange={(event) =>
+                onUpdatePreferences((current) => ({
+                  ...current,
+                  eraserWidth: clampInkWidth(Number(event.target.value), false),
+                }))
+              }
+            />
+            <output>{eraserWidthForControls}px</output>
+          </label>
           <select
             aria-label="Eraser mode"
             value={preferences.eraserMode}

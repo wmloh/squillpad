@@ -228,14 +228,14 @@ export async function startHostService(options: HostServiceOptions = {}): Promis
     };
     const onHierarchyMutation = (action: string, next: NotebookManifest | undefined): void => {
       if (next === undefined) return;
-      if (action === "update-lan-sharing-default") {
+      if (action === "update-lan-sharing-default" || action === "import-project-settings") {
         sharing = {
           ...sharing,
           defaultEnabled:
             readLanSharingDefault(next.settings.metadata) ?? DEFAULT_LAN_SHARING_ENABLED,
         };
       }
-      if (action === "update-autosave-frequency") {
+      if (action === "update-autosave-frequency" || action === "import-project-settings") {
         synchronization?.setAutosaveIntervalSeconds(
           readAutosaveIntervalSeconds(next.settings.metadata) ?? DEFAULT_AUTOSAVE_INTERVAL_SECONDS,
         );

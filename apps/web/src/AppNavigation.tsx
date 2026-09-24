@@ -1361,6 +1361,7 @@ const NavigationContextMenu = (props: {
                   key={section.manifest.id}
                   type="button"
                   role="menuitem"
+                  data-section-id={section.manifest.id}
                   disabled={mutationDisabled}
                   onClick={() => onMovePage(section.manifest.id)}
                   onKeyDown={(event) => {

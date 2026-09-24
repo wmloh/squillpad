@@ -30,6 +30,8 @@ import {
   readMarkdownBoxAppearance,
   readMarkdownColorStyles,
   isProfileSettingsExport,
+  isProjectSettingsExport,
+  serializeCanonicalJson,
   serializeProfileSettingsExport,
   type AutosaveIntervalSeconds,
   type LaserPointerSettings,
@@ -39,6 +41,7 @@ import {
   type NotebookSection,
   type ProfileDrawingPalettes,
   type ProfileSettings,
+  type ProjectSettingsExport,
 } from "@squillpad/core-model";
 import {
   PageSyncClient,
@@ -106,6 +109,7 @@ import type {
 const LIVE_PREVIEW_INTERVAL_MS = 1_000 / 30;
 const PROJECT_PRESENCE_INTERVAL_MS = 5_000;
 const PROFILE_SETTINGS_IMPORT_MAX_BYTES = 256 * 1024;
+const PROJECT_SETTINGS_IMPORT_MAX_BYTES = 256 * 1024;
 const PRESENCE_CLIENT_ID_HEADER = "x-squillpad-presence-id";
 const PROJECT_PRESENCE_CLIENT_ID_KEY = "squillpad:project-presence-client-id";
 const PROJECT_PRESENCE_CLIENT_ID_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
@@ -113,6 +117,26 @@ const SAVE_STATUS_POSSIBILITIES = "Saving, Saved, Save error";
 const SYNCHRONIZATION_STATUS_POSSIBILITIES =
   "Connecting, Synchronized, Offline — editing locally, Synchronization error, Host disconnected, Project reloaded, Host stopped";
 let nextPictureInPictureId = 0;
+
+function sameSaveStatuses(
+  current: Readonly<Record<string, SaveSnapshot>>,
+  next: Readonly<Record<string, SaveSnapshot>>,
+): boolean {
+  const currentKeys = Object.keys(current);
+  if (currentKeys.length !== Object.keys(next).length) return false;
+  return currentKeys.every((key) => {
+    const before = current[key];
+    const after = next[key];
+    return (
+      before !== undefined &&
+      after !== undefined &&
+      before.status === after.status &&
+      before.revision === after.revision &&
+      before.dirty === after.dirty &&
+      before.error === after.error
+    );
+  });
+}
 
 type PendingDeletion =
   | {
@@ -289,6 +313,7 @@ export function App() {
     DEFAULT_KEYBOARD_PAN_SPEED_MULTIPLIER,
   );
   const profileSettingsImportRef = useRef<HTMLInputElement>(null);
+  const projectSettingsImportRef = useRef<HTMLInputElement>(null);
   const profileSettingsSaveQueueRef = useRef(Promise.resolve());
   const profileCacheHasAuthenticatedUserRef = useRef(false);
   const hierarchyRef = useRef<NotebookHierarchy | undefined>(undefined);
@@ -989,7 +1014,10 @@ export function App() {
         const status = await requestJson<SynchronizationStatusResponse>("/api/sync/status", {
           method: "GET",
         });
-        if (!cancelled) setSaveStatuses(status.canonical ?? {});
+        if (!cancelled) {
+          const next = status.canonical ?? {};
+          setSaveStatuses((current) => (sameSaveStatuses(current, next) ? current : next));
+        }
       } catch {
         // Network synchronization status remains available when this auxiliary request fails.
       }
@@ -1633,6 +1661,56 @@ export function App() {
       setBusy(false);
     }
   };
+  const exportProjectSettings = async () => {
+    if (!hostSessionRef.current || clientReadOnlyRef.current) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      const exported = await withRepositoryOperationRetry(() =>
+        requestJson<ProjectSettingsExport>("/api/project/settings/export", { method: "GET" }),
+      );
+      if (!isProjectSettingsExport(exported)) {
+        throw new Error("The host returned invalid project settings");
+      }
+      downloadExport(
+        "squillpad-project-settings.json",
+        serializeCanonicalJson(exported),
+        "application/json;charset=utf-8",
+      );
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const importProjectSettings = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+    if (file === undefined || !hostSessionRef.current || clientReadOnlyRef.current) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      if (file.size > PROJECT_SETTINGS_IMPORT_MAX_BYTES) {
+        throw new Error("Project-settings imports must be 256 KiB or smaller");
+      }
+      const parsed: unknown = JSON.parse(await file.text());
+      if (!isProjectSettingsExport(parsed)) {
+        throw new Error("Choose a valid SquillPad project-settings export file");
+      }
+      const next = await withRepositoryOperationRetry(() =>
+        requestJson<NotebookHierarchy>("/api/project/settings/import", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ export: parsed }),
+        }),
+      );
+      applyHierarchy(next);
+    } catch (reason) {
+      setError(errorMessage(reason));
+    } finally {
+      setBusy(false);
+    }
+  };
   const nextTheme = applicationPreferences.theme === "light" ? "dark" : "light";
   const logout = async () => {
     const clientId = projectPresenceClientIdRef.current;
@@ -1748,6 +1826,7 @@ export function App() {
           clientReadOnly,
           busy,
           profileSettingsImportRef,
+          projectSettingsImportRef,
           onMarkdownBoxAppearanceChange: updateMarkdownBoxAppearance,
           onTextScalePercentChange: updateApplicationTextScalePercent,
           onLaserPointerSettingsChange: updateLaserPointerSettings,
@@ -1767,6 +1846,8 @@ export function App() {
             setApplicationPreferences((current) => ({ ...current, pageBackground })),
           onExportProfileSettings: exportProfileSettings,
           onImportProfileSettings: (event) => void importProfileSettings(event),
+          onExportProjectSettings: () => void exportProjectSettings(),
+          onImportProjectSettings: (event) => void importProjectSettings(event),
         }}
         onCreateSection={createSection}
         onCreatePage={createPage}

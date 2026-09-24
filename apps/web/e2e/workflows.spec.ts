@@ -30,6 +30,25 @@ async function cameraPosition(canvas: Locator): Promise<{ x: number; y: number }
   });
 }
 
+test("renders a near-stationary pen stroke with complete round caps", async ({ page }) => {
+  await page.goto("/");
+  const canvas = await openFreshPage(page);
+  const bounds = await canvas.boundingBox();
+  if (bounds === null) throw new Error("Canvas bounds are unavailable");
+
+  await page.getByRole("button", { name: "Pen", exact: true }).click();
+  await page.mouse.move(bounds.x + 240, bounds.y + 180);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + 241, bounds.y + 180);
+  await page.mouse.up();
+
+  const path = page.locator(".canvas-element.kind-ink .canvas-vector path");
+  await expect(path).toHaveCount(1);
+  const data = await path.getAttribute("d");
+  expect(data).toContain("Q 5 2");
+  expect(data).toContain("Q 0 2");
+});
+
 test("temporarily pans with Space from another canvas tool", async ({ page }) => {
   await page.goto("/");
   const canvas = await openFreshPage(page);
@@ -54,6 +73,45 @@ test("temporarily pans with Space from another canvas tool", async ({ page }) =>
     .poll(() => canvas.evaluate((surface) => surface.style.backgroundPosition))
     .not.toBe(before);
   await expect(page.locator(".canvas-element")).toHaveCount(elementCount);
+});
+
+test("pans both axes with the wheel while Space is held", async ({ page }) => {
+  await page.goto("/");
+  const canvas = await openFreshPage(page);
+  const bounds = await canvas.boundingBox();
+  if (bounds === null) throw new Error("Canvas bounds are unavailable");
+
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Hand" })).toHaveAttribute(
+    "title",
+    "Hand (M; hold Space to drag or scroll; add Shift to scroll sideways)",
+  );
+  await page.mouse.move(bounds.x + 180, bounds.y + 140);
+  const before = await cameraPosition(canvas);
+  const zoom = page.getByLabel("Zoom level");
+  const initialZoom = await zoom.textContent();
+
+  await page.keyboard.down("Space");
+  await page.mouse.wheel(80, 120);
+  await expect.poll(() => cameraPosition(canvas)).toEqual({
+    x: before.x - 80,
+    y: before.y - 120,
+  });
+  await expect(zoom).toHaveText(initialZoom ?? "");
+
+  const beforeSideScroll = await cameraPosition(canvas);
+  await page.keyboard.down("Shift");
+  await page.mouse.wheel(0, 100);
+  await expect.poll(() => cameraPosition(canvas)).toEqual({
+    x: beforeSideScroll.x - 100,
+    y: beforeSideScroll.y,
+  });
+  await expect(zoom).toHaveText(initialZoom ?? "");
+  await page.keyboard.up("Shift");
+
+  await page.keyboard.up("Space");
+  await page.mouse.wheel(0, 120);
+  await expect(zoom).not.toHaveText(initialZoom ?? "");
 });
 
 test("pans with arrow keys but leaves the camera still while editing Markdown", async ({
@@ -123,7 +181,7 @@ test("opens an existing Markdown box with one click from the Text tool", async (
   await expect(markdown).toContainText("Existing text updated");
 });
 
-test("centers fullscreen Markdown editing and opens the editor on the left", async ({ page }) => {
+test("centers fullscreen Markdown editing horizontally without vertical panning", async ({ page }) => {
   await page.goto("/");
   const canvas = await openFreshPage(page);
   const initialBounds = await canvas.boundingBox();
@@ -132,7 +190,12 @@ test("centers fullscreen Markdown editing and opens the editor on the left", asy
   await page.getByRole("button", { name: "Text", exact: true }).click();
   await page.mouse.click(initialBounds.x + 500, initialBounds.y + 180);
   await expect(page.locator(".cm-content")).toBeVisible();
-  await page.keyboard.insertText("Fullscreen editor positioning");
+  await page.keyboard.insertText(
+    [
+      "Fullscreen editor positioning",
+      ...Array.from({ length: 24 }, (_, index) => `Line ${index + 1}`),
+    ].join("\n\n"),
+  );
   await page.getByRole("button", { name: "Close Markdown editor", exact: true }).click();
 
   const markdown = page.locator(".canvas-element.kind-markdown");
@@ -140,7 +203,19 @@ test("centers fullscreen Markdown editing and opens the editor on the left", asy
   await page.getByRole("button", { name: "Enter fullscreen", exact: true }).click();
   await expect(page.locator(".notebook-app.is-canvas-fullscreen")).toBeVisible();
 
-  await markdown.dblclick();
+  const beforeCanvasBounds = await canvas.boundingBox();
+  const beforeMarkdownBounds = await markdown.boundingBox();
+  if (beforeCanvasBounds === null || beforeMarkdownBounds === null) {
+    throw new Error("Fullscreen Markdown geometry is unavailable before editing");
+  }
+  expect(
+    Math.abs(
+      beforeMarkdownBounds.y + beforeMarkdownBounds.height / 2 -
+        (beforeCanvasBounds.y + beforeCanvasBounds.height / 2),
+    ),
+  ).toBeGreaterThan(50);
+  const beforeEditing = await cameraPosition(canvas);
+  await markdown.dblclick({ position: { x: 24, y: 24 } });
   const editor = page.locator(".markdown-editor-popover.is-open");
   await expect(editor).toBeVisible();
   const canvasBounds = await canvas.boundingBox();
@@ -154,12 +229,106 @@ test("centers fullscreen Markdown editing and opens the editor on the left", asy
     canvasBounds.x + canvasBounds.width / 2,
     0,
   );
-  expect(markdownBounds.y + markdownBounds.height / 2).toBeCloseTo(
-    canvasBounds.y + canvasBounds.height / 2,
-    0,
-  );
+  expect(markdownBounds.height).toBeGreaterThan(400);
+  expect((await cameraPosition(canvas)).y).toBe(beforeEditing.y);
   expect(editorBounds.x).toBeLessThan(canvasBounds.x + canvasBounds.width / 2);
   expect(editorBounds.x - canvasBounds.x).toBeLessThan(24);
+});
+
+test("keeps only customized Markdown editor layouts for the browser session", async ({ page }) => {
+  await page.goto("/");
+  const canvas = await openFreshPage(page);
+  const canvasBounds = await canvas.boundingBox();
+  if (canvasBounds === null) throw new Error("Canvas bounds are unavailable");
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await page.mouse.click(canvasBounds.x + 240, canvasBounds.y + 160);
+  await page.keyboard.insertText("Customized editor");
+
+  const editor = page.locator(".markdown-editor-popover.is-open");
+  await expect(editor).toBeVisible();
+  expect(
+    await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("squillpad:markdown-editor-layout:")).length),
+  ).toBe(0);
+  const initial = await editor.boundingBox();
+  if (initial === null) throw new Error("Markdown editor bounds are unavailable");
+
+  const move = page.getByRole("button", { name: "Move Markdown editor" });
+  await move.click();
+  expect(
+    await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("squillpad:markdown-editor-layout:")).length),
+  ).toBe(0);
+  const moveBounds = await move.boundingBox();
+  if (moveBounds === null) throw new Error("Move handle bounds are unavailable");
+  await drag(page, moveBounds.x + 45, moveBounds.y + moveBounds.height / 2, 90, -45);
+  await expect(editor).toHaveClass(/is-custom-layout/u);
+  const moved = await editor.boundingBox();
+  if (moved === null) throw new Error("Moved editor bounds are unavailable");
+  expect(moved.x).toBeGreaterThan(initial.x + 70);
+  expect(moved.y).toBeLessThan(initial.y - 25);
+
+  const resize = page.getByRole("button", { name: "Resize Markdown editor" });
+  const resizeBounds = await resize.boundingBox();
+  if (resizeBounds === null) throw new Error("Resize handle bounds are unavailable");
+  await drag(page, resizeBounds.x + resizeBounds.width / 2, resizeBounds.y + resizeBounds.height / 2, 110, 65);
+  const customized = await editor.boundingBox();
+  if (customized === null) throw new Error("Resized editor bounds are unavailable");
+  expect(customized.width).toBeGreaterThan(moved.width + 80);
+  expect(customized.height).toBeGreaterThan(moved.height + 45);
+  expect(
+    await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("squillpad:markdown-editor-layout:")).length),
+  ).toBe(1);
+
+  await page.getByRole("button", { name: "Close Markdown editor" }).click();
+  await page.getByRole("button", { name: "Enter fullscreen" }).click();
+  await page.locator(".canvas-element.kind-markdown").dblclick();
+  await expect(editor).toBeVisible();
+  const fullscreen = await editor.boundingBox();
+  if (fullscreen === null) throw new Error("Fullscreen editor bounds are unavailable");
+  expect(fullscreen.width).toBeCloseTo(customized.width, 0);
+  expect(fullscreen.height).toBeCloseTo(customized.height, 0);
+  const fullscreenMoveBounds = await move.boundingBox();
+  if (fullscreenMoveBounds === null) throw new Error("Fullscreen move handle bounds are unavailable");
+  await drag(page, fullscreenMoveBounds.x + 45, fullscreenMoveBounds.y + fullscreenMoveBounds.height / 2, 35, 30);
+  const fullscreenMoved = await editor.boundingBox();
+  if (fullscreenMoved === null) throw new Error("Moved fullscreen editor bounds are unavailable");
+  expect(fullscreenMoved.x).toBeGreaterThan(fullscreen.x + 20);
+  const fullscreenResizeBounds = await resize.boundingBox();
+  if (fullscreenResizeBounds === null) throw new Error("Fullscreen resize handle bounds are unavailable");
+  await drag(page, fullscreenResizeBounds.x + 8, fullscreenResizeBounds.y + 8, 40, 25);
+  const fullscreenResized = await editor.boundingBox();
+  if (fullscreenResized === null) throw new Error("Resized fullscreen editor bounds are unavailable");
+  expect(fullscreenResized.width).toBeGreaterThan(fullscreenMoved.width + 25);
+  await page.getByRole("button", { name: "Close Markdown editor" }).click();
+  await page.reload();
+  await page.locator(".canvas-element.kind-markdown").dblclick();
+  await expect(editor).toHaveClass(/is-custom-layout/u);
+  const restored = await editor.boundingBox();
+  if (restored === null) throw new Error("Restored editor bounds are unavailable");
+  expect(restored.width).toBeCloseTo(fullscreenResized.width, 0);
+  expect(restored.height).toBeCloseTo(fullscreenResized.height, 0);
+
+  await page.getByRole("button", { name: "Close Markdown editor" }).click();
+  await expect(editor).toHaveCount(0);
+  const secondCanvas = await openFreshPage(page);
+  const secondCanvasBounds = await secondCanvas.boundingBox();
+  if (secondCanvasBounds === null) throw new Error("Second canvas bounds are unavailable");
+  await page.getByRole("button", { name: "Text", exact: true }).click();
+  await page.mouse.click(secondCanvasBounds.x + 800, secondCanvasBounds.y + 600);
+  await expect(editor).not.toHaveClass(/is-custom-layout/u);
+  expect(
+    await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("squillpad:markdown-editor-layout:")).length),
+  ).toBe(1);
+  await page.keyboard.insertText("Default editor");
+  await page.getByRole("button", { name: "Close Markdown editor" }).click();
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await page.locator(".canvas-element.kind-markdown").last().dblclick();
+  await expect(editor).toBeVisible();
+  await page.getByRole("button", { name: "Move Markdown editor" }).focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.getByRole("button", { name: "Resize Markdown editor" }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(editor).not.toHaveClass(/is-custom-layout/u);
+  expect(await page.evaluate(() => Object.keys(sessionStorage).filter((key) => key.startsWith("squillpad:markdown-editor-layout:")).length)).toBe(1);
 });
 
 test("keeps empty Markdown editor footer controls usable in windowed and fullscreen modes", async ({
@@ -340,14 +509,19 @@ test("creates and reopens a complete mixed page workflow", async ({ page }) => {
   await expect(shape).toHaveCount(0);
 
   const ink = page.locator(".kind-ink");
-  const inkBounds = await ink.boundingBox();
-  if (inkBounds === null) throw new Error("Ink bounds are unavailable");
   await page.getByRole("button", { name: "Erase", exact: true }).click();
-  await page.mouse.move(inkBounds.x + inkBounds.width / 2, inkBounds.y - 12);
+  const eraserInkBounds = await ink.boundingBox();
+  if (eraserInkBounds === null) throw new Error("Ink bounds are unavailable after selecting Erase");
+  await page.mouse.move(
+    eraserInkBounds.x + eraserInkBounds.width / 2,
+    eraserInkBounds.y - 12,
+  );
   await page.mouse.down();
-  await page.mouse.move(inkBounds.x + inkBounds.width / 2, inkBounds.y + inkBounds.height + 12, {
-    steps: 8,
-  });
+  await page.mouse.move(
+    eraserInkBounds.x + eraserInkBounds.width / 2,
+    eraserInkBounds.y + eraserInkBounds.height + 12,
+    { steps: 8 },
+  );
   const eraserTrace = page.locator(".canvas-eraser-trace");
   await expect(eraserTrace).toBeVisible();
   const traceZIndex = Number(
@@ -433,7 +607,7 @@ test("navigates Markdown footnotes without scrolling the canvas surface", async 
   const initialRoute = new URL(page.url()).hash;
   const readStatusGeometry = () =>
     canvas.evaluate((surface) => {
-      const statusElement = surface.querySelector<HTMLElement>(".canvas-status");
+      const statusElement = surface.parentElement?.querySelector<HTMLElement>(".canvas-status");
       if (statusElement === null) throw new Error("Canvas status is unavailable");
       const surfaceRect = surface.getBoundingClientRect();
       const statusRect = statusElement.getBoundingClientRect();
@@ -704,6 +878,30 @@ test("keeps controls and toolbar labels out of text selection", async ({ page })
   expect(searchStyle.webkitUserSelect).not.toBe("none");
 });
 
+test("keeps pen and eraser thickness preferences independent", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByLabel("Infinite page canvas")).toBeVisible();
+
+  await page.getByRole("button", { name: "Pen", exact: true }).click();
+  const penThickness = page.getByLabel("Ink thickness", { exact: true });
+  await penThickness.fill("30");
+  await expect(penThickness).toHaveValue("30");
+
+  await page.getByRole("button", { name: "Erase", exact: true }).click();
+  const eraserThickness = page.getByLabel("Eraser thickness", { exact: true });
+  await expect(eraserThickness).toHaveAttribute("min", "2");
+  await expect(eraserThickness).toHaveAttribute("max", "30");
+  await expect(eraserThickness).toHaveAttribute("step", "1");
+  await expect(eraserThickness).toHaveValue("14");
+  await eraserThickness.fill("6");
+  await expect(eraserThickness).toHaveValue("6");
+
+  await page.getByRole("button", { name: "Pen", exact: true }).click();
+  await expect(page.getByLabel("Ink thickness", { exact: true })).toHaveValue("30");
+  await page.getByRole("button", { name: "Erase", exact: true }).click();
+  await expect(page.getByLabel("Eraser thickness", { exact: true })).toHaveValue("6");
+});
+
 test("does not select settings contents when the menu is reopened quickly", async ({ page }) => {
   await page.goto("/");
   const summary = page.locator(".section-settings > summary");
@@ -764,6 +962,41 @@ test("does not select settings contents when the menu is reopened quickly", asyn
   expect(await page.evaluate(() => window.getSelection()?.toString() ?? "")).toBe("");
 });
 
+test("shows host project-settings controls and imports a portable setting", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".section-settings > summary").click();
+
+  const exportButton = page.getByRole("button", { name: "Export project", exact: true });
+  const importButton = page.getByRole("button", { name: "Import project", exact: true });
+  await expect(exportButton).toBeVisible();
+  await expect(importButton).toBeVisible();
+
+  const downloadPromise = page.waitForEvent("download");
+  await exportButton.click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("squillpad-project-settings.json");
+
+  await page.locator('input[type="file"][accept="application/json,.json"]').setInputFiles({
+    name: "project-settings.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        format: "squillpad-project-settings",
+        schemaVersion: 1,
+        settings: { defaultZoom: 1.75 },
+      }),
+    ),
+  });
+
+  await expect
+    .poll(async () => {
+      const response = await page.request.get("/api/project/settings/export");
+      const exported = (await response.json()) as { settings?: { defaultZoom?: number } };
+      return exported.settings?.defaultZoom;
+    })
+    .toBe(1.75);
+});
+
 test("keeps the Settings menu below its trigger and inside a narrow viewport", async ({ page }) => {
   await page.setViewportSize({ width: 240, height: 700 });
   await page.goto("/");
@@ -819,10 +1052,10 @@ test("opens the full guide in a new tab from settings", async ({ page }) => {
   const guidePage = await guidePagePromise;
   try {
     await guidePage.waitForLoadState("domcontentloaded");
-    await expect(guidePage).toHaveTitle("SquillPad — Getting started");
+    await expect(guidePage).toHaveTitle("SquillPad — Guide");
     await expect(
       guidePage.getByRole("heading", {
-        name: "Draw, write, and keep your ideas together.",
+        name: "Keep words, sketches, and teamwork in one place.",
         exact: true,
       }),
     ).toBeVisible();
@@ -1139,7 +1372,6 @@ test("moves pages from page actions and by dragging onto a section", async ({ pa
   await expect(sectionItems).toHaveCount(2);
   const targetSection = sectionItems.nth(1);
   const targetSectionId = await targetSection.getAttribute("data-reorder-id");
-  const targetSectionTitle = await targetSection.locator(".section-select").innerText();
   if (targetSectionId === null) throw new Error("Target section identity is unavailable");
 
   await sourceSection.locator(".section-select").click();
@@ -1181,15 +1413,14 @@ test("moves pages from page actions and by dragging onto a section", async ({ pa
   await expect(moveMenu).toBeVisible();
   await expect(moveMenu).toHaveAttribute("data-page-move-menu-phase", "open");
   await expect(moveMenu).toHaveAttribute("data-page-move-menu-side", "right");
-  await expect(
-    moveMenu.getByRole("menuitem", { name: targetSectionTitle, exact: true }),
-  ).toBeVisible();
+  const targetMoveItem = moveMenu.locator(`[data-section-id="${targetSectionId}"]`);
+  await expect(targetMoveItem).toBeVisible();
   await pageMenu.getByRole("menuitem", { name: "Copy page", exact: true }).hover();
   await expect(moveMenu).toHaveCount(0);
   await moveTrigger.hover();
   await expect(moveMenu).toHaveAttribute("data-page-move-menu-phase", "open");
   await page.screenshot({ path: "test-results/navigation-page-move-light.png" });
-  await moveMenu.getByRole("menuitem", { name: targetSectionTitle, exact: true }).click();
+  await targetMoveItem.click();
 
   await expect(pageMenu).toHaveCount(0);
   await expect(targetSection).toHaveClass(/is-active/);

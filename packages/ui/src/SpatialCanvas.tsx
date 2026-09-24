@@ -292,7 +292,7 @@ interface PendingRadialHold {
 
 const CULLING_MARGIN_SCREEN_PX = 320;
 const MAX_LASER_TRACE_POINTS = 4096;
-const KEYBOARD_PAN_SPEED_PX_PER_SECOND = 240;
+const KEYBOARD_PAN_SPEED_PX_PER_SECOND = 960;
 const ELEMENT_DRAG_THRESHOLD_SCREEN_PX = 4;
 
 /** World-space canvas with editing controls or a read-only pan and zoom surface. */
@@ -353,6 +353,7 @@ function SpatialCanvasImpl(
   ref: ForwardedRef<SpatialCanvasHandle>,
 ) {
   const surfaceRef = useRef<HTMLDivElement>(null);
+  const editorOverlayRef = useRef<HTMLDivElement>(null);
   const readOnlyRef = useRef(readOnly);
   readOnlyRef.current = readOnly;
   const markdownImportRef = useRef<HTMLInputElement>(null);
@@ -417,6 +418,7 @@ function SpatialCanvasImpl(
   );
   const preferencesRef = useRef(preferences);
   preferencesRef.current = preferences;
+  const effectiveEraserWidth = clampInkWidth(preferences.eraserWidth, false);
   const lastControlledDrawingPreferencesRef = useRef(controlledDrawingPreferences);
   const updatePreferences = useCallback(
     (update: (current: DrawingPreferences) => DrawingPreferences) => {
@@ -847,7 +849,7 @@ function SpatialCanvasImpl(
     canvasHistory.record(pageId, before, snapshot());
     emitElements?.(next);
     emitSource?.(id, source);
-    if (fullscreen) centerCanvasElement(element);
+    if (fullscreen) centerCanvasElement(element, false);
     setSelectedIds(new Set([id]));
     setEditingMarkdownId(id);
     setTool("select");
@@ -925,14 +927,16 @@ function SpatialCanvasImpl(
     [onCameraChange, reportPerformance],
   );
   const centerCanvasElement = useCallback(
-    (element: CanvasElement | undefined) => {
+    (element: CanvasElement | undefined, centerVertically = true) => {
       const surface = surfaceRef.current;
       if (surface === null || element === undefined) return;
       const bounds = elementBounds(element);
       setCamera((current) => ({
         ...current,
         x: surface.clientWidth / 2 - (bounds.x + bounds.width / 2) * current.zoom,
-        y: surface.clientHeight / 2 - (bounds.y + bounds.height / 2) * current.zoom,
+        y: centerVertically
+          ? surface.clientHeight / 2 - (bounds.y + bounds.height / 2) * current.zoom
+          : current.y,
       }));
     },
     [setCamera],
@@ -1415,7 +1419,7 @@ function SpatialCanvasImpl(
       effectiveMarkdownColorStyles.defaultStyleId,
     );
     onElementsChange?.(insertElement(elementsRef.current, element));
-    if (fullscreen) centerCanvasElement(element);
+    if (fullscreen) centerCanvasElement(element, false);
     setSelectedIds(new Set([id]));
     setEditingMarkdownId(id);
     setTool("select");
@@ -1423,7 +1427,7 @@ function SpatialCanvasImpl(
   const beginMarkdownEditing = (id: string) => {
     if (readOnlyRef.current) return;
     const element = elementsRef.current.find((candidate) => candidate.id === id);
-    if (fullscreen) centerCanvasElement(element);
+    if (fullscreen) centerCanvasElement(element, false);
     setSelectedIds(new Set([id]));
     setEditingMarkdownId(id);
   };
@@ -1475,7 +1479,7 @@ function SpatialCanvasImpl(
     const inserted = next.find((element) => element.id === id);
     if (inserted === undefined) return;
     onElementsChange(next);
-    if (fullscreen) centerCanvasElement(inserted);
+    if (fullscreen) centerCanvasElement(inserted, false);
     emitSource?.(id, "");
     setSelectedTextGroupId(undefined);
     setSelectedIds(new Set([id]));
@@ -2380,11 +2384,12 @@ function SpatialCanvasImpl(
           eraseElements(
             elementsRef.current,
             points,
-            preferences.eraserWidth / 2,
+            effectiveEraserWidth / 2,
             preferences.eraserMode,
           ),
         );
         setSelectedIds(new Set());
+        endNavigationPointer(event);
       } else {
         const lassoSelection = lassoSelectElements(elementsRef.current, points);
         const lassoIds = expandLassoSelection(elementsRef.current, lassoSelection);
@@ -3385,6 +3390,7 @@ function SpatialCanvasImpl(
           inkWidthForControls={inkWidthForControls}
           inkDimensionLabel={inkDimensionLabel}
           inkDimensionAriaLabel={inkDimensionAriaLabel}
+          eraserWidthForControls={effectiveEraserWidth}
           hasGroupedSelection={hasGroupedSelection}
           markdownColorStyles={effectiveMarkdownColorStyles}
           markdownSearchControlled={controlledMarkdownSearchQuery !== undefined}
@@ -3433,6 +3439,7 @@ function SpatialCanvasImpl(
           onFullscreenChange={(next) => onFullscreenChange?.(next)}
         />
       )}
+      <div className="canvas-viewport">
       <div
         ref={surfaceRef}
         className={`spatial-canvas page-background-${pageBackground} ${fullscreen ? "is-fullscreen" : ""} ${isPanning ? "is-panning" : ""} ${radialMenu !== undefined ? "is-radial-menu-open" : ""} ${palmRejectionActive ? "is-palm-rejection" : ""} ${palmRejectionActive && touchOverrideHeld ? "is-touch-unlocked" : ""} ${readOnly ? `read-only ${tool === "laser" ? "tool-laser" : "tool-pan"}` : `tool-${tool}`}`}
@@ -3525,7 +3532,27 @@ function SpatialCanvasImpl(
         onClick={handleMarkdownFragmentClick}
         onWheel={(event) => {
           if (isEditableTarget(event.target)) return;
+          const textBox =
+            event.target instanceof Element ? event.target.closest(".markdown-block") : null;
+          if (
+            !spaceHeldRef.current &&
+            textBox !== null &&
+            (textBox.scrollHeight > textBox.clientHeight ||
+              textBox.scrollWidth > textBox.clientWidth)
+          )
+            return;
           event.preventDefault();
+          if (spaceHeldRef.current) {
+            const horizontalWheelDelta = event.shiftKey
+              ? event.deltaX || event.deltaY
+              : event.deltaX;
+            const deltaX = horizontalWheelDelta *
+              (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? event.currentTarget.clientWidth : 1);
+            const deltaY = (event.shiftKey ? 0 : event.deltaY) *
+              (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? event.currentTarget.clientHeight : 1);
+            setCamera((value) => panCamera(value, { x: -deltaX, y: -deltaY }));
+            return;
+          }
           const point = localPoint(event.clientX, event.clientY);
           setCamera((value) =>
             zoomCameraAt(value, point, value.zoom * Math.exp(-event.deltaY * 0.0015)),
@@ -3548,6 +3575,7 @@ function SpatialCanvasImpl(
           </svg>
         )}
         <CanvasElementLayer
+          pageId={pageId}
           transform={transform}
           visibleTextBoxGroups={visibleTextBoxGroups}
           visibleElements={visibleElements}
@@ -3574,6 +3602,7 @@ function SpatialCanvasImpl(
           theme={theme}
           markdownSources={markdownSources}
           surfaceRef={surfaceRef}
+          editorOverlayRef={editorOverlayRef}
           elementsRef={elementsRef}
           cameraRef={cameraRef}
           gestureHistoryRef={gestureHistoryRef}
@@ -3622,7 +3651,7 @@ function SpatialCanvasImpl(
               stroke="var(--app-accent)"
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth={preferences.eraserWidth}
+              strokeWidth={effectiveEraserWidth}
             />
           </svg>
         )}
@@ -3634,7 +3663,7 @@ function SpatialCanvasImpl(
             visible={cursorVisible}
             zoom={camera.zoom}
             zIndex={laserZIndex + 1}
-            eraserWidth={preferences.eraserWidth}
+            eraserWidth={effectiveEraserWidth}
           />
         )}
         {palmRejectionActive && (
@@ -3669,6 +3698,9 @@ function SpatialCanvasImpl(
             draggable={false}
           />
         )}
+        {radialMenuOverlay}
+      </div>
+      <div ref={editorOverlayRef} className={`canvas-screen-overlay ${fullscreen ? "is-fullscreen" : ""}`}>
         {!presentationOnly && (
           <div className="canvas-status">
             <span aria-label="Cursor world coordinates">
@@ -3678,7 +3710,7 @@ function SpatialCanvasImpl(
             <output aria-label="Zoom level">{Math.round(camera.zoom * 100)}%</output>
           </div>
         )}
-        {radialMenuOverlay}
+      </div>
       </div>
     </div>
   );
