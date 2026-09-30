@@ -729,6 +729,23 @@ details[data-menu-phase="closing"] > [data-animated-menu] {
   cursor: pointer;
   opacity: 0;
 }
+.canvas-toolbar .radial-toolbar-toggle {
+  border-color: transparent;
+  background: transparent;
+}
+.canvas-toolbar .radial-toolbar-toggle:has(input:checked),
+.canvas-toolbar .radial-toolbar-toggle:has(input:not(:disabled)):hover {
+  border-color: var(--app-accent-border);
+  color: var(--app-accent-foreground);
+  background: var(--app-accent-soft);
+}
+.canvas-toolbar .radial-toolbar-toggle:has(input:disabled) {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.canvas-toolbar .radial-toolbar-toggle input:disabled {
+  cursor: not-allowed;
+}
 .radial-toolbar-toggle__track {
   position: relative;
   display: inline-flex;

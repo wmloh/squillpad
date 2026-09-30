@@ -54,7 +54,7 @@ for (const theme of ["light", "dark"] as const) {
     y = selectShapeBounds.y;
     await page.mouse.click(x + 150, y + 1);
     await expect(shape).toHaveClass(/is-selected/);
-    await page.getByRole("button", { name: "Fill", exact: true }).click();
+    await page.getByRole("checkbox", { name: "Fill", exact: true }).check();
     await page.getByTitle("Bring to front", { exact: true }).click();
     const shapeStyle = await shape.getAttribute("style");
     const clickInside = async (dx: number, dy: number) => {

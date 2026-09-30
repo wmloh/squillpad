@@ -531,6 +531,12 @@ describe("App", () => {
     expect(html).toContain(">Laser<");
     expect(html).toContain('aria-label="Read-only page canvas"');
     expect(html).toContain('aria-label="Hand"');
+    const container = document.createElement("div");
+    container.innerHTML = html;
+    const deleteButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Delete selected objects"]',
+    );
+    expect(deleteButton?.disabled).toBe(true);
   });
 
   it("renders a selectable reflective frame for a text-box group", () => {

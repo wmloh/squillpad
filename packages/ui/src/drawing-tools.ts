@@ -98,20 +98,24 @@ export function updateSelectedShapeStyle(
   ids: ReadonlySet<string>,
   patch: Partial<Pick<ShapeStyle, "strokeColor" | "strokeWidth" | "fillColor" | "opacity">>,
 ): readonly CanvasElement[] {
-  return elements.map((element) =>
-    element.kind === "shape" && ids.has(element.id)
-      ? {
-          ...element,
-          style: {
-            ...element.style,
-            ...patch,
-            ...(patch.strokeWidth === undefined
-              ? {}
-              : { strokeWidth: clampShapeWidth(patch.strokeWidth) }),
-          },
-        }
-      : element,
-  );
+  return elements.map((element) => {
+    if (element.kind !== "shape" || !ids.has(element.id)) return element;
+    const applicablePatch = { ...patch };
+    if (element.geometry.kind === "line" || element.geometry.kind === "arrow") {
+      delete applicablePatch.fillColor;
+    }
+    if (Object.keys(applicablePatch).length === 0) return element;
+    return {
+      ...element,
+      style: {
+        ...element.style,
+        ...applicablePatch,
+        ...(applicablePatch.strokeWidth === undefined
+          ? {}
+          : { strokeWidth: clampShapeWidth(applicablePatch.strokeWidth) }),
+      },
+    };
+  });
 }
 
 /** Erases intersected drawing elements or emits surviving ink fragments. */

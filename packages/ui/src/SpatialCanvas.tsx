@@ -3272,6 +3272,11 @@ function SpatialCanvasImpl(
     setSelectedIds(new Set());
     return text;
   };
+  const deleteSelection = () => {
+    if (readOnlyRef.current || effectiveSelectedIds.size === 0) return;
+    onElementsChange(deleteElements(elementsRef.current, effectiveSelectedIds));
+    setSelectedIds(new Set());
+  };
 
   const positionShapeMenu = (details: HTMLDetailsElement) => {
     const bounds = details.getBoundingClientRect();
@@ -3452,6 +3457,7 @@ function SpatialCanvasImpl(
           onUngroupSelection={ungroupSelection}
           onCopySelection={copySelection}
           onPasteSelection={pasteSelection}
+          onDeleteSelection={deleteSelection}
           onTravelHistory={travelHistory}
           onFullscreenChange={(next) => onFullscreenChange?.(next)}
         />
@@ -3495,8 +3501,7 @@ function SpatialCanvasImpl(
             effectiveSelectedIds.size > 0
           ) {
             event.preventDefault();
-            onElementsChange?.(deleteElements(elementsRef.current, effectiveSelectedIds));
-            setSelectedIds(new Set());
+            deleteSelection();
           } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "d") {
             event.preventDefault();
             duplicateSelection();

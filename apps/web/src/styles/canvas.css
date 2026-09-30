@@ -665,6 +665,10 @@
   border-radius: 0.75rem;
   box-sizing: border-box;
   overflow: auto;
+  scrollbar-color: transparent transparent;
+}
+.markdown-block:hover {
+  scrollbar-color: auto;
 }
 .markdown-preview-layer {
   min-height: 100%;

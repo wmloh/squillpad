@@ -423,6 +423,31 @@ describe("drawing tools", () => {
     expect(recolored[1]).toBe(other);
   });
 
+  it("fills only closed shapes in a mixed selection while updating every stroke", () => {
+    const shapes = (["line", "arrow", "rectangle", "ellipse"] as const).map((kind, index) =>
+      createShapeRecord(
+        `${ID.slice(0, -1)}${index}`, index, kind, { x: 0, y: 0 }, { x: 30, y: 20 }, SHAPE_STYLE,
+      ),
+    );
+    const ids = new Set(shapes.map((shape) => shape.id));
+    const filled = updateSelectedShapeStyle(shapes, ids, { fillColor: "#60a5fa" });
+    expect(filled[0]).toBe(shapes[0]);
+    expect(filled[1]).toBe(shapes[1]);
+    expect(filled.slice(2)).toMatchObject([
+      { style: { fillColor: "#60a5fa" } },
+      { style: { fillColor: "#60a5fa" } },
+    ]);
+    const recolored = updateSelectedShapeStyle(shapes, ids, {
+      strokeColor: "#60a5fa", fillColor: "#60a5fa",
+    });
+    expect(recolored).toMatchObject([
+      { style: { strokeColor: "#60a5fa", fillColor: null } },
+      { style: { strokeColor: "#60a5fa", fillColor: null } },
+      { style: { strokeColor: "#60a5fa", fillColor: "#60a5fa" } },
+      { style: { strokeColor: "#60a5fa", fillColor: "#60a5fa" } },
+    ]);
+  });
+
   it("updates only selected shape styles", () => {
     const shape = createShapeRecord(
       ID,

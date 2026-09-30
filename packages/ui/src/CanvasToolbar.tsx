@@ -143,6 +143,7 @@ export interface CanvasToolbarProps {
   readonly onUngroupSelection: () => void;
   readonly onCopySelection: () => void | Promise<unknown>;
   readonly onPasteSelection: () => void | Promise<unknown>;
+  readonly onDeleteSelection: () => void;
   readonly onTravelHistory: (redo: boolean) => void;
   readonly onFullscreenChange: (fullscreen: boolean) => void;
 }
@@ -209,9 +210,18 @@ export function CanvasToolbar({
   onUngroupSelection,
   onCopySelection,
   onPasteSelection,
+  onDeleteSelection,
   onTravelHistory,
   onFullscreenChange,
 }: CanvasToolbarProps) {
+  const fillableShapes = selectedShapes.filter(
+    (shape) => shape.geometry.kind === "rectangle" || shape.geometry.kind === "ellipse",
+  );
+  const showFill =
+    selectedShapes.length > 0
+      ? fillableShapes.length > 0
+      : tool === "rectangle" || tool === "ellipse";
+  const fillStyle = fillableShapes[0]?.style ?? activeShapeStyle;
   const shapeToolButtons = (["line", "arrow", "rectangle", "ellipse"] as const).map((shapeTool) => (
     <button
       key={shapeTool}
@@ -293,6 +303,15 @@ export function CanvasToolbar({
         onClick={onPasteSelection}
       >
         <PasteIcon />
+      </button>
+      <button
+        className="canvas-icon-button"
+        disabled={readOnly || selectedCount === 0}
+        aria-label="Delete selected objects"
+        title="Delete selected objects (Delete/Backspace)"
+        onClick={onDeleteSelection}
+      >
+        <DeleteIcon />
       </button>
     </>
   );
@@ -815,20 +834,16 @@ export function CanvasToolbar({
               />
             </>
           )}
-          <button
-            disabled={readOnly}
-            aria-pressed={shapeStyleForControls.fillColor !== null}
-            onClick={() =>
-              onSetShapePreference({
-                fillColor:
-                  shapeStyleForControls.fillColor === null
-                    ? shapeStyleForControls.strokeColor
-                    : null,
-              })
-            }
-          >
-            Fill
-          </button>
+          {showFill && (
+            <ToolbarToggle
+              label="Fill"
+              checked={fillStyle.fillColor !== null}
+              disabled={readOnly}
+              onChange={(checked) =>
+                onSetShapePreference({ fillColor: checked ? fillStyle.strokeColor : null })
+              }
+            />
+          )}
         </div>
       )}
       <div className="tool-group canvas-action-group" role="group" aria-label="Canvas actions">
@@ -860,15 +875,39 @@ function PaletteModeToggle({
 }) {
   const label = kind === "highlighter" ? "highlight" : kind;
   return (
+    <ToolbarToggle
+      label={custom ? "Custom" : "Default"}
+      ariaLabel={`Use custom ${label} colors`}
+      checked={custom}
+      disabled={disabled}
+      onChange={onChange}
+    />
+  );
+}
+
+function ToolbarToggle({
+  label,
+  ariaLabel = label,
+  checked,
+  disabled,
+  onChange,
+}: {
+  readonly label: string;
+  readonly ariaLabel?: string;
+  readonly checked: boolean;
+  readonly disabled: boolean;
+  readonly onChange: (checked: boolean) => void;
+}) {
+  return (
     <label className="radial-toolbar-toggle">
       <span>
-        <strong>{custom ? "Custom" : "Default"}</strong>
+        <strong>{label}</strong>
       </span>
       <input
         type="checkbox"
-        checked={custom}
+        checked={checked}
         disabled={disabled}
-        aria-label={`Use custom ${label} colors`}
+        aria-label={ariaLabel}
         onChange={(event) => onChange(event.target.checked)}
       />
       <span className="radial-toolbar-toggle__track" aria-hidden="true">
@@ -1651,6 +1690,21 @@ function PasteIcon() {
     <svg className="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
       <path d="M8 7h8v12H8z" fill="none" stroke="currentColor" strokeWidth="1.5" />
       <path d="M10 7V5h4v2M10 12h4M10 15h4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+    </svg>
+  );
+}
+
+function DeleteIcon() {
+  return (
+    <svg className="tool-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
