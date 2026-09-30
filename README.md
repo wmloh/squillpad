@@ -16,6 +16,9 @@ to that host locally or over a trusted local network.
   and project-defined color styles for text, headings, links, code, math, and other elements.
 - Pointer-based input for a mouse or cursor, touch, and stylus, with touch navigation and profile
   drawing palettes.
+- Hold the end of a single Pen stroke for about 650 ms to straighten a line or turn a rough
+  rectangle or ellipse into an editable shape. Keep holding to adjust its dimensions, then release
+  to confirm. Ambiguous strokes stay as ink; arrows and highlighter strokes are not converted.
 - Real-time, page-scoped collaboration over a local area network, with presence, offline editing,
   and reconnect synchronization.
 - Sections and pages with reordering, duplication, copy/paste, image handling, undo/redo, laser

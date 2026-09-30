@@ -816,11 +816,13 @@ export function CanvasToolbar({
                   onSetShapePreference({ strokeWidth: Number(event.target.value) })
                 }
               >
-                {[1, 3, 6, 9, 12, SHAPE_WIDTH_MAX].map((width) => (
-                  <option key={width} value={width}>
-                    {width}px
-                  </option>
-                ))}
+                {Array.from(new Set([1, 3, 6, 9, 12, SHAPE_WIDTH_MAX, shapeStrokeWidthForControls]))
+                  .sort((left, right) => left - right)
+                  .map((width) => (
+                    <option key={width} value={width}>
+                      {width}px
+                    </option>
+                  ))}
               </select>
               <input
                 aria-label="Shape opacity"

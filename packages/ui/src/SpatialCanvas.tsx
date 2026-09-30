@@ -116,6 +116,7 @@ import {
 import { searchMarkdown } from "./markdown-search";
 import { applyGeometryPreviews, type GeometryPreview } from "./geometry-preview";
 import { createInkRecord, pointerSampleToWorld, renderInkPath } from "./ink-engine";
+import { InkShapeGesture } from "./ink-shape-gesture";
 import {
   CanvasPerformanceInstrumentation,
   type CanvasPerformanceSnapshot,
@@ -675,6 +676,60 @@ function SpatialCanvasImpl(
     path.setAttribute("fill", record.style.color);
     path.setAttribute("opacity", String(record.style.opacity));
   }, []);
+  const clearRadialHold = useCallback((pointerId?: number) => {
+    const pending = radialHoldRef.current;
+    if (
+      pending === undefined ||
+      (pointerId !== undefined && pending.pointerId !== pointerId)
+    )
+      return;
+    window.clearTimeout(pending.timer);
+    radialHoldRef.current = undefined;
+  }, []);
+  const inkShapeGesture = useMemo(
+    () =>
+      new InkShapeGesture((shape) => {
+        if (shape !== undefined) renderActiveInkPreview(undefined);
+        setActiveShape(
+          shape === undefined
+            ? undefined
+            : createShapeRecord(
+                shape.id,
+                elementsRef.current.length,
+                shape.kind,
+                shape.start,
+                shape.end,
+                shape.style,
+              ),
+        );
+      }),
+    [renderActiveInkPreview],
+  );
+  const cancelActiveInk = useCallback(() => {
+    const pointerId = activeInkRef.current?.pointerId;
+    if (pointerId !== undefined) clearRadialHold(pointerId);
+    activeInkRef.current = undefined;
+    if (pointerId !== undefined) setActiveShape(undefined);
+    if (pointerId !== undefined && activePenPointerRef.current === pointerId) {
+      activePenPointerRef.current = undefined;
+    }
+    inkShapeGesture.cancel();
+    renderActiveInkPreview(undefined);
+  }, [clearRadialHold, inkShapeGesture, renderActiveInkPreview]);
+  useLayoutEffect(() => {
+    cancelActiveInk();
+    return () => inkShapeGesture.dispose();
+  }, [
+    cancelActiveInk,
+    inkShapeGesture,
+    pageId,
+    tool,
+    readOnly,
+    camera.x,
+    camera.y,
+    camera.zoom,
+    fullscreen,
+  ]);
   const canvasHistory = canvasSession.history;
   const gestureHistoryRef = useRef<string | undefined>(undefined);
   const snapshot = (): CanvasHistorySnapshot => ({
@@ -873,6 +928,7 @@ function SpatialCanvasImpl(
   };
   const travelHistory = (redo: boolean) => {
     if (readOnlyRef.current) return;
+    cancelActiveInk();
     finishGesture();
     const before = snapshot();
     const next = redo
@@ -1223,6 +1279,12 @@ function SpatialCanvasImpl(
         closeRadialMenuRef.current();
         return;
       }
+      if (event.key === "Escape" && activeInkRef.current !== undefined) {
+        event.preventDefault();
+        clearRadialHold(activeInkRef.current.pointerId);
+        cancelActiveInk();
+        return;
+      }
       if (event.key === "Escape" && fullscreen) {
         event.preventDefault();
         onFullscreenChange?.(false);
@@ -1293,6 +1355,8 @@ function SpatialCanvasImpl(
       spaceHeldRef.current = false;
       stopKeyboardPan();
       releaseTouchOverride();
+      clearRadialHold();
+      cancelActiveInk();
     };
     window.addEventListener("keydown", keyDown);
     window.addEventListener("keyup", keyUp);
@@ -1529,6 +1593,12 @@ function SpatialCanvasImpl(
     [],
   );
 
+  const inkShapeScreenScale = () => {
+    const surface = surfaceRef.current;
+    const scale = surfacePointScale(surface, surface?.getBoundingClientRect());
+    return cameraRef.current.zoom / Math.max(scale.x, scale.y);
+  };
+
   const updateActiveInk = useCallback(
     (stroke: ActiveInkStroke) => {
       const startedAt = performanceRef.current!.now();
@@ -1652,15 +1722,6 @@ function SpatialCanvasImpl(
     laserClearTimersRef.current.set(finished.id, timer);
   };
 
-  const clearRadialHold = (pointerId?: number) => {
-    const pending = radialHoldRef.current;
-    if (pending === undefined || (pointerId !== undefined && pending.pointerId !== pointerId)) {
-      return;
-    }
-    window.clearTimeout(pending.timer);
-    radialHoldRef.current = undefined;
-  };
-
   const closeRadialMenu = () => {
     clearRadialHold();
     radialMenuRef.current = undefined;
@@ -1683,6 +1744,7 @@ function SpatialCanvasImpl(
   };
 
   const cancelPointerGestureForRadial = (pointerId: number) => {
+    inkShapeGesture.cancel(pointerId);
     if (activeInkRef.current?.pointerId === pointerId) {
       activeInkRef.current = undefined;
       renderActiveInkPreview(undefined);
@@ -1962,12 +2024,21 @@ function SpatialCanvasImpl(
       beginCapturedPointer(event);
       setSelectedIds(new Set());
       if (event.pointerType === "pen") activePenPointerRef.current = event.pointerId;
-      updateActiveInk({
+      const stroke = {
         id: randomId(),
         pointerId: event.pointerId,
         samples: eventInkSamples(event),
         style: activeInkStyle,
-      });
+      };
+      updateActiveInk(stroke);
+      if (tool === "pen") {
+        inkShapeGesture.begin(
+          stroke,
+          { x: event.clientX, y: event.clientY },
+          world,
+          inkShapeScreenScale(),
+        );
+      }
       setCursorVisible(false);
       return;
     }
@@ -2088,10 +2159,19 @@ function SpatialCanvasImpl(
     const activeStroke = activeInkRef.current;
     if (activeStroke?.pointerId === event.pointerId) {
       event.preventDefault();
-      updateActiveInk({
+      const stroke = {
         ...activeStroke,
-        samples: appendDistinctSamples(activeStroke.samples, eventInkSamples(event)),
-      });
+        samples: inkShapeGesture.recognized
+          ? activeStroke.samples
+          : appendDistinctSamples(activeStroke.samples, eventInkSamples(event)),
+      };
+      if (!inkShapeGesture.recognized) updateActiveInk(stroke);
+      inkShapeGesture.move(
+        stroke,
+        { x: event.clientX, y: event.clientY },
+        viewportToWorld(point, cameraRef.current),
+        inkShapeScreenScale(),
+      );
       return;
     }
     updateCursor(point, event.pointerType);
@@ -2367,13 +2447,26 @@ function SpatialCanvasImpl(
     const activeStroke = activeInkRef.current;
     if (activeStroke?.pointerId === event.pointerId) {
       const point = localPoint(event.clientX, event.clientY);
-      const samples = appendMovedSamples(activeStroke.samples, eventInkSamples(event));
-      const record = createInkRecord(
-        activeStroke.id,
-        elementsRef.current.length,
-        samples,
-        activeStroke.style,
+      const shape = inkShapeGesture.finish(
+        event.pointerId,
+        viewportToWorld(point, cameraRef.current),
       );
+      const record =
+        shape === undefined
+          ? createInkRecord(
+              activeStroke.id,
+              elementsRef.current.length,
+              appendMovedSamples(activeStroke.samples, eventInkSamples(event)),
+              activeStroke.style,
+            )
+          : createShapeRecord(
+              shape.id,
+              elementsRef.current.length,
+              shape.kind,
+              shape.start,
+              shape.end,
+              shape.style,
+            );
       activeInkRef.current = undefined;
       activePenPointerRef.current = undefined;
       renderActiveInkPreview(undefined);
@@ -2436,6 +2529,7 @@ function SpatialCanvasImpl(
   };
 
   const handlePointerCancel = (event: React.PointerEvent<HTMLDivElement>) => {
+    inkShapeGesture.cancel(event.pointerId);
     if (radialMenuRef.current?.pointerId === event.pointerId) {
       if (radialMenuPointerReleasedRef.current === event.pointerId) return;
       closeRadialMenu();
