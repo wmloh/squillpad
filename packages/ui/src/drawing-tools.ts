@@ -14,7 +14,7 @@ import {
 
 import type { Point } from "./canvas-camera";
 import { clampInkWidth, clampShapeWidth } from "./drawing-limits";
-import { createInkRecord } from "./ink-engine";
+import { createInkRecord, strokeOutline } from "./ink-engine";
 
 export type ShapeTool = Extract<ProfileDrawingTool, "line" | "arrow" | "rectangle" | "ellipse">;
 export type EraserMode = ProfileEraserMode;
@@ -169,7 +169,34 @@ export function eraseInk(
   return eraseElements(elements, path, radius, mode);
 }
 
-/** Selects ink and semantic shapes whose geometry touches a closed lasso polygon. */
+/** Tests strokes and shape outlines, leaving their empty interiors available to selection. */
+export function elementContainsSelectionPoint(
+  element: CanvasElement,
+  point: Point,
+  tolerance = 0,
+): boolean {
+  if (element.kind === "ink") {
+    const outline = selectionInkOutline(element);
+    return pointInPolygon(point, outline) || pointNearPath(point, closePath(outline), tolerance);
+  }
+  if (element.kind === "shape") {
+    const paths = selectionShapePaths(element);
+    return paths.some((path, index) =>
+      index === 1
+        ? pointInPolygon(point, path) || pointNearPath(point, path, tolerance)
+        : pointNearPath(point, path, tolerance + element.style.strokeWidth / 2),
+    );
+  }
+  const bounds = elementBounds(element);
+  return (
+    point.x >= bounds.x &&
+    point.x <= bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y <= bounds.y + bounds.height
+  );
+}
+
+/** Selects elements whose strokes or outlines are enclosed by or cross a lasso polygon. */
 export function lassoSelectElements(
   elements: readonly CanvasElement[],
   polygon: readonly Point[],
@@ -177,7 +204,22 @@ export function lassoSelectElements(
   if (polygon.length < 3) return new Set();
   const bounds = paddedPointBounds(polygon, 0);
   const selected = elements
-    .filter((element) => boundsOverlap(elementBounds(element), bounds))
+    .filter((element) => {
+      const candidate = elementBounds(element);
+      const padding =
+        element.kind === "shape" && element.geometry.kind === "arrow"
+          ? 5 * element.style.strokeWidth
+          : 0;
+      return boundsOverlap(
+        {
+          x: candidate.x - padding,
+          y: candidate.y - padding,
+          width: candidate.width + 2 * padding,
+          height: candidate.height + 2 * padding,
+        },
+        bounds,
+      );
+    })
     .filter((element) => elementTouchesPolygon(element, polygon));
   const hasOtherElement = selected.length > 1;
   return new Set(
@@ -238,7 +280,13 @@ function isTextBoxGroupBlock(element: CanvasElement): boolean {
 }
 
 function elementTouchesPolygon(element: CanvasElement, polygon: readonly Point[]): boolean {
-  if (element.kind === "ink") return strokeTouchesPolygon(absoluteInkPoints(element), polygon);
+  if (element.kind === "ink") {
+    const outline = selectionInkOutline(element);
+    return (
+      strokeTouchesPolygon(closePath(outline), polygon) ||
+      polygon.some((point) => pointInPolygon(point, outline))
+    );
+  }
   if (element.kind === "markdown" || element.kind === "image") {
     const bounds = elementBounds(element);
     const corners = [
@@ -258,13 +306,85 @@ function elementTouchesPolygon(element: CanvasElement, polygon: readonly Point[]
       )
     );
   }
-  const points = shapePath(element);
-  const closed = [...points, points[0] as Point];
-  return (
-    strokeTouchesPolygon(closed, polygon) ||
-    (element.style.fillColor !== null &&
-      polygon.some((point) => shapeContainsPoint(element, point)))
+  return selectionShapePaths(element).some(
+    (path, index) =>
+      strokeTouchesPolygon(path, polygon) ||
+      strokeIntersectsPath(
+        path,
+        closePath(polygon),
+        index === 1 ? 0 : element.style.strokeWidth / 2,
+      ) ||
+      (index === 1 && polygon.some((point) => pointInPolygon(point, path))),
   );
+}
+
+const selectionInkOutlineCache = new WeakMap<InkCanvasRecord, readonly Point[]>();
+
+function selectionInkOutline(element: InkCanvasRecord): readonly Point[] {
+  const cached = selectionInkOutlineCache.get(element);
+  if (cached !== undefined) return cached;
+  const outline = strokeOutline(
+    element.points,
+    element.style.width,
+    element.style.smoothing ?? 0.65,
+    0,
+    element.style.highlighter,
+  ).map((point) => ({
+    x: point.x + element.position[0],
+    y: point.y + element.position[1],
+  }));
+  selectionInkOutlineCache.set(element, outline);
+  return outline;
+}
+
+function closePath(points: readonly Point[]): readonly Point[] {
+  return points.length === 0 ? points : [...points, points[0] as Point];
+}
+
+function selectionShapePaths(element: ShapeCanvasRecord): readonly (readonly Point[])[] {
+  const { geometry, position, style } = element;
+  if (geometry.kind === "line" || geometry.kind === "arrow") {
+    const shaft = shapePath(element);
+    if (geometry.kind === "line") return [shaft];
+    const start = shaft[0] as Point;
+    const end = shaft[1] as Point;
+    const angle = Math.atan2(end.y - start.y, end.x - start.x);
+    const head = [
+      [-4, -2.5],
+      [1, 0],
+      [-4, 2.5],
+    ].map(([x, y]) => ({
+      x:
+        end.x +
+        ((x as number) * Math.cos(angle) - (y as number) * Math.sin(angle)) * style.strokeWidth,
+      y:
+        end.y +
+        ((x as number) * Math.sin(angle) + (y as number) * Math.cos(angle)) * style.strokeWidth,
+    }));
+    return [shaft, closePath(head)];
+  }
+  // Match the inset stroke centerline used by CanvasElementView.
+  const inset = style.strokeWidth / 2;
+  const width = Math.max(0, geometry.width - style.strokeWidth);
+  const height = Math.max(0, geometry.height - style.strokeWidth);
+  const x = position[0] + geometry.width / 2;
+  const y = position[1] + geometry.height / 2;
+  const points =
+    geometry.kind === "rectangle"
+      ? [
+          { x: position[0] + inset, y: position[1] + inset },
+          { x: position[0] + inset + width, y: position[1] + inset },
+          { x: position[0] + inset + width, y: position[1] + inset + height },
+          { x: position[0] + inset, y: position[1] + inset + height },
+        ]
+      : Array.from({ length: 64 }, (_, index) => {
+          const angle = (index / 64) * Math.PI * 2;
+          return {
+            x: x + (width / 2) * Math.cos(angle),
+            y: y + (height / 2) * Math.sin(angle),
+          };
+        });
+  return [closePath(points)];
 }
 
 function shapeIntersectsPath(

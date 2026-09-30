@@ -556,6 +556,17 @@
   position: absolute;
   cursor: move;
 }
+.spatial-canvas.tool-select .canvas-element.kind-ink,
+.spatial-canvas.tool-select .canvas-element.kind-shape {
+  cursor: inherit;
+}
+.spatial-canvas.tool-select .canvas-element.kind-ink.is-hovered,
+.spatial-canvas.tool-select .canvas-element.kind-shape.is-hovered {
+  cursor: move;
+}
+.spatial-canvas.tool-select:has(.canvas-element.is-hovered):not(.is-panning) {
+  cursor: move;
+}
 .canvas-image {
   display: block;
   width: 100%;

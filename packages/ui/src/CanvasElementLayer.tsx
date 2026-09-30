@@ -278,7 +278,9 @@ export function CanvasElementLayer({
               opacity: isDimmed ? 0.25 : undefined,
             }}
             aria-label={`${element.kind} element`}
-            onPointerEnter={() => setHoveredId(element.id)}
+            onPointerEnter={() => {
+              if (tool !== "select") setHoveredId(element.id);
+            }}
             onPointerLeave={() =>
               setHoveredId((current) => (current === element.id ? undefined : current))
             }

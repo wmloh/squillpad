@@ -10,6 +10,7 @@ import {
 import {
   acceptsDrawingPointer,
   createShapeRecord,
+  elementContainsSelectionPoint,
   eraseElements,
   eraseInk,
   insertVerticalSpace,
@@ -78,7 +79,11 @@ describe("drawing tools", () => {
       SHAPE_STYLE,
       true,
     );
-    expect(ellipse.geometry).toMatchObject({ kind: "ellipse", width: 30, height: 30 });
+    expect(ellipse.geometry).toMatchObject({
+      kind: "ellipse",
+      width: 30,
+      height: 30,
+    });
   });
 
   it("whole-stroke erases through an atomic immutable result", () => {
@@ -154,6 +159,144 @@ describe("drawing tools", () => {
         ],
       ),
     ).toEqual(new Set());
+  });
+
+  it("hits ink strokes, dots and highlighters without hitting empty ink bounds", () => {
+    const loop: InkCanvasRecord = {
+      ...ink,
+      points: [
+        [0, 0],
+        [100, 0],
+        [100, 100],
+        [0, 100],
+        [0, 0],
+      ],
+      style: { ...ink.style, smoothing: 0 },
+    };
+    expect(elementContainsSelectionPoint(loop, { x: 50, y: 50 }, 4)).toBe(false);
+    expect(elementContainsSelectionPoint(loop, { x: 50, y: 5 }, 4)).toBe(true);
+    expect(elementContainsSelectionPoint(loop, { x: 50, y: 8 }, 4)).toBe(false);
+    const dot = {
+      ...ink,
+      position: [20, 30] as const,
+      points: [[0, 0] as const],
+    };
+    expect(elementContainsSelectionPoint(dot, { x: 20, y: 30 })).toBe(true);
+    expect(elementContainsSelectionPoint(dot, { x: 30, y: 30 }, 4)).toBe(false);
+    const highlighter = {
+      ...ink,
+      style: { ...ink.style, highlighter: true, width: 30 },
+    };
+    expect(elementContainsSelectionPoint(highlighter, { x: 50, y: 12 })).toBe(true);
+    expect(elementContainsSelectionPoint(highlighter, { x: 50, y: 22 }, 4)).toBe(false);
+    expect(elementContainsSelectionPoint(ink, { x: 50, y: 5 }, 4)).toBe(true);
+    expect(elementContainsSelectionPoint(ink, { x: 50, y: 5 }, 1)).toBe(false);
+  });
+
+  it.each(["rectangle", "ellipse"] as const)("hits only %s outlines regardless of fill", (kind) => {
+    for (const fillColor of [null, "#111111"]) {
+      const shape = createShapeRecord(
+        ID,
+        0,
+        kind,
+        { x: 10, y: 20 },
+        { x: 110, y: 120 },
+        {
+          ...SHAPE_STYLE,
+          fillColor,
+          strokeWidth: 12,
+        },
+      );
+      expect(elementContainsSelectionPoint(shape, { x: 60, y: 70 }, 4)).toBe(false);
+      expect(elementContainsSelectionPoint(shape, { x: 60, y: 29 }, 0)).toBe(true);
+      expect(elementContainsSelectionPoint(shape, { x: 60, y: 17 }, 4)).toBe(true);
+      expect(elementContainsSelectionPoint(shape, { x: 60, y: 14 }, 4)).toBe(false);
+      if (kind === "ellipse") {
+        expect(elementContainsSelectionPoint(shape, { x: 12, y: 22 }, 4)).toBe(false);
+      }
+    }
+  });
+
+  it("hits diagonal line and arrow geometry instead of their bounding boxes", () => {
+    const line = createShapeRecord(ID, 0, "line", { x: 0, y: 0 }, { x: 100, y: 100 }, SHAPE_STYLE);
+    expect(elementContainsSelectionPoint(line, { x: 50, y: 50 }, 4)).toBe(true);
+    expect(elementContainsSelectionPoint(line, { x: 10, y: 80 }, 4)).toBe(false);
+    const arrow = createShapeRecord(
+      ID,
+      0,
+      "arrow",
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      {
+        ...SHAPE_STYLE,
+        strokeWidth: 6,
+      },
+    );
+    expect(elementContainsSelectionPoint(arrow, { x: 78, y: 10 })).toBe(true);
+    expect(elementContainsSelectionPoint(arrow, { x: 50, y: 10 })).toBe(false);
+    expect(
+      lassoSelectElements(
+        [arrow],
+        [
+          { x: 76, y: 8 },
+          { x: 80, y: 8 },
+          { x: 80, y: 12 },
+          { x: 76, y: 12 },
+        ],
+      ),
+    ).toEqual(new Set([arrow.id]));
+  });
+
+  it.each(["rectangle", "ellipse"] as const)(
+    "lassos nested ink without selecting a surrounding filled %s",
+    (kind) => {
+      const shape = createShapeRecord(
+        "shape",
+        1,
+        kind,
+        { x: 0, y: 0 },
+        { x: 200, y: 200 },
+        {
+          ...SHAPE_STYLE,
+          fillColor: "#111111",
+        },
+      );
+      const nestedInk = { ...ink, position: [50, 100] as const };
+      const polygon = [
+        { x: 40, y: 90 },
+        { x: 160, y: 90 },
+        { x: 160, y: 110 },
+        { x: 40, y: 110 },
+      ];
+      expect(lassoSelectElements([shape, nestedInk], polygon)).toEqual(new Set([ink.id]));
+      expect(
+        lassoSelectElements(
+          [shape],
+          [
+            { x: -10, y: -10 },
+            { x: 210, y: -10 },
+            { x: 210, y: 210 },
+            { x: -10, y: 210 },
+          ],
+        ),
+      ).toEqual(new Set([shape.id]));
+      expect(
+        lassoSelectElements(
+          [shape],
+          [
+            { x: 90, y: -10 },
+            { x: 110, y: -10 },
+            { x: 110, y: 10 },
+            { x: 90, y: 10 },
+          ],
+        ),
+      ).toEqual(new Set([shape.id]));
+    },
+  );
+
+  it("keeps Markdown interior selection intact", () => {
+    expect(elementContainsSelectionPoint(markdown, { x: 50, y: 40 })).toBe(true);
+    expect(elementContainsSelectionPoint(markdown, { x: 10, y: 40 }, 4)).toBe(false);
   });
 
   it("lassos all semantic shapes and erases each shape geometry", () => {

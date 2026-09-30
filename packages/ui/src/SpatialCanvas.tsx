@@ -90,6 +90,7 @@ import { clampInkWidth, clampShapeWidth, DRAWING_WIDTH_MIN } from "./drawing-lim
 import {
   acceptsDrawingPointer,
   createShapeRecord,
+  elementContainsSelectionPoint,
   eraseElements,
   lassoSelectElements,
   updateSelectedInkStyle,
@@ -1827,7 +1828,13 @@ function SpatialCanvasImpl(
         ? event.target.closest<HTMLElement>("[data-canvas-element-id]")
         : null;
     const elementId = elementHost?.dataset.canvasElementId;
-    const element = elementsRef.current.find((candidate) => candidate.id === elementId);
+    const isMarkdownDragHandle =
+      event.target instanceof Element &&
+      event.target.closest(".canvas-markdown-drag-handle") !== null;
+    const element =
+      tool === "select" && !isMarkdownDragHandle
+        ? selectionElementAt(world)
+        : elementsRef.current.find((candidate) => candidate.id === elementId);
     if (
       tool === "text" &&
       event.button === 0 &&
@@ -2089,6 +2096,9 @@ function SpatialCanvasImpl(
     }
     updateCursor(point, event.pointerType);
     const world = viewportToWorld(point, cameraRef.current);
+    if (tool === "select" && !readOnlyRef.current) {
+      setHoveredId(selectionElementAt(world)?.id);
+    }
     const space = activeSpaceRef.current;
     if (space?.pointerId === event.pointerId) {
       event.preventDefault();
@@ -2620,6 +2630,13 @@ function SpatialCanvasImpl(
     }
   }, [elements, selectedTextGroupId]);
   const spatialIndex = useMemo(() => new CanvasSpatialIndex(displayElements), [displayElements]);
+  const selectionElementAt = (point: Point): CanvasElement | undefined => {
+    const tolerance = 4 / cameraRef.current.zoom;
+    // Arrow markers extend beyond the shaft bounds held by the broad-phase index.
+    return spatialIndex
+      .hitCandidates(point, tolerance + 5 * SHAPE_WIDTH_MAX)
+      .find((element) => elementContainsSelectionPoint(element, point, tolerance));
+  };
   const effectiveViewportSize = useMemo(
     () => ({
       width: viewportSize.width || surfaceRef.current?.clientWidth || 0,
@@ -3526,7 +3543,10 @@ function SpatialCanvasImpl(
         onPointerEnter={(event) => {
           updateCursor(localPoint(event.clientX, event.clientY), event.pointerType);
         }}
-        onPointerLeave={() => setCursorVisible(false)}
+        onPointerLeave={() => {
+          setCursorVisible(false);
+          setHoveredId(undefined);
+        }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onClick={handleMarkdownFragmentClick}
