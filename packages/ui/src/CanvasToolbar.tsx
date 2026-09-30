@@ -96,6 +96,7 @@ export interface CanvasToolbarProps {
   readonly hasClipboard: boolean;
   readonly selectedCount: number;
   readonly shapeMenuRef: RefObject<HTMLDetailsElement | null>;
+  readonly shapeOpacityMenuRef: RefObject<HTMLDetailsElement | null>;
   readonly miscellaneousMenuRef: RefObject<HTMLDetailsElement | null>;
   readonly markdownStyleMenuRef: RefObject<HTMLDetailsElement | null>;
   readonly paletteEditorMenuRefs: MutableRefObject<
@@ -183,6 +184,7 @@ export function CanvasToolbar({
   hasClipboard,
   selectedCount,
   shapeMenuRef,
+  shapeOpacityMenuRef,
   miscellaneousMenuRef,
   markdownStyleMenuRef,
   paletteEditorMenuRefs,
@@ -214,6 +216,36 @@ export function CanvasToolbar({
   onTravelHistory,
   onFullscreenChange,
 }: CanvasToolbarProps) {
+  useEffect(() => {
+    const details = shapeOpacityMenuRef.current;
+    if (details !== null) closeAnimatedMenu(details);
+  }, [tool, readOnly, shapePaletteForControls.custom, shapeOpacityMenuRef]);
+  useEffect(() => {
+    const details = shapeOpacityMenuRef.current;
+    if (details === null) return;
+    const reposition = () => {
+      if (!details.open) return;
+      onPositionShapeMenu(details);
+      refreshAnimatedMenuOrigin(details);
+    };
+    reposition();
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(reposition);
+    observer?.observe(details);
+    if (details.parentElement !== null)
+      observer?.observe(details.parentElement);
+    window.addEventListener("resize", reposition);
+    window.addEventListener("scroll", reposition, true);
+    window.visualViewport?.addEventListener("resize", reposition);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", reposition);
+      window.removeEventListener("scroll", reposition, true);
+      window.visualViewport?.removeEventListener("resize", reposition);
+    };
+  }, [fullscreen, toolbarHeight, shapeOpacityMenuRef, onPositionShapeMenu]);
   const fillableShapes = selectedShapes.filter(
     (shape) => shape.geometry.kind === "rectangle" || shape.geometry.kind === "ellipse",
   );
@@ -808,32 +840,95 @@ export function CanvasToolbar({
           )}
           {!shapePaletteForControls.custom && (
             <>
-              <select
-                aria-label="Shape stroke width"
-                value={shapeStrokeWidthForControls}
-                disabled={readOnly}
-                onChange={(event) =>
-                  onSetShapePreference({ strokeWidth: Number(event.target.value) })
+              <label className="range-control">
+                <span>Thickness</span>
+                <input
+                  aria-label="Shape thickness"
+                  title="Shape thickness"
+                  type="range"
+                  min={INK_WIDTH_MIN}
+                  max={INK_WIDTH_MAX}
+                  step="1"
+                  value={shapeStrokeWidthForControls}
+                  disabled={readOnly}
+                  onChange={(event) =>
+                    onSetShapePreference({
+                      strokeWidth: Number(event.target.value),
+                    })
+                  }
+                />
+                <output>{shapeStrokeWidthForControls}px</output>
+              </label>
+              <details
+                className="canvas-tool-menu canvas-opacity-menu"
+                ref={shapeOpacityMenuRef}
+                onToggle={(event) => {
+                  const details = event.currentTarget;
+                  if (details.open) onPositionShapeMenu(details);
+                  prepareAnimatedMenu(details);
+                }}
+                onAnimationEnd={(event) =>
+                  finishAnimatedMenu(
+                    event.currentTarget,
+                    event.animationName,
+                    event.target,
+                  )
                 }
+                onKeyDown={(event) => {
+                  if (event.key !== "Escape") return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  closeAnimatedMenu(event.currentTarget);
+                  event.currentTarget.querySelector("summary")?.focus();
+                }}
               >
-                {Array.from(new Set([1, 3, 6, 9, 12, SHAPE_WIDTH_MAX, shapeStrokeWidthForControls]))
-                  .sort((left, right) => left - right)
-                  .map((width) => (
-                    <option key={width} value={width}>
-                      {width}px
-                    </option>
+                <summary
+                  aria-label="Shape opacity"
+                  aria-disabled={readOnly}
+                  title="Shape opacity"
+                  onClick={(event) => {
+                    if (readOnly) {
+                      event.preventDefault();
+                      return;
+                    }
+                    const details = event.currentTarget.parentElement;
+                    if (details instanceof HTMLDetailsElement)
+                      onPositionShapeMenu(details);
+                    prepareAnimatedMenuFromSummary(event.currentTarget, event);
+                  }}
+                >
+                  Opacity {Math.round(shapeStyleForControls.opacity * 100)}%
+                </summary>
+                <div
+                  className="canvas-tool-menu__content"
+                  data-animated-menu
+                  role="group"
+                  aria-label="Shape opacity options"
+                >
+                  {[0.1, 0.25, 0.5, 0.75, 1].map((opacity) => (
+                    <button
+                      key={opacity}
+                      className={
+                        shapeStyleForControls.opacity === opacity
+                          ? "is-active"
+                          : ""
+                      }
+                      aria-pressed={shapeStyleForControls.opacity === opacity}
+                      disabled={readOnly}
+                      onClick={() => {
+                        onSetShapePreference({ opacity });
+                        const details = shapeOpacityMenuRef.current;
+                        if (details !== null) {
+                          closeAnimatedMenu(details);
+                          details.querySelector("summary")?.focus();
+                        }
+                      }}
+                    >
+                      {Math.round(opacity * 100)}%
+                    </button>
                   ))}
-              </select>
-              <input
-                aria-label="Shape opacity"
-                type="range"
-                min="0.1"
-                max="1"
-                step="0.1"
-                value={shapeStyleForControls.opacity}
-                disabled={readOnly}
-                onChange={(event) => onSetShapePreference({ opacity: Number(event.target.value) })}
-              />
+                </div>
+              </details>
             </>
           )}
           {showFill && (

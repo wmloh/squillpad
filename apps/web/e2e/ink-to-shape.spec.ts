@@ -115,11 +115,14 @@ for (const theme of ["light", "dark"] as const) {
       .locator("[data-canvas-element-id].kind-shape")
       .click({ position: { x: 25, y: 2 } });
     await expect(page.locator(".canvas-selection-overlay")).toHaveCount(1);
-    const strokeWidth = page.getByLabel("Shape stroke width", { exact: true });
+    const strokeWidth = page.getByLabel("Shape thickness", { exact: true });
     await expect(strokeWidth).toHaveValue(
       String(canonical[0].style.strokeWidth),
     );
-    await strokeWidth.selectOption("6");
+    await strokeWidth.evaluate((input) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "6");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
     await expect
       .poll(async () => (await records(page))[0]?.style.strokeWidth)
       .toBe(6);

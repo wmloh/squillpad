@@ -16,7 +16,7 @@ import {
   SHAPE_WIDTH_MAX,
   saveDrawingPreferences,
 } from "./drawing-preferences";
-import { clampInkWidth } from "./drawing-limits";
+import { clampInkWidth, clampShapeWidth } from "./drawing-limits";
 
 describe("drawing preferences", () => {
   it("exposes the ordered six-color ink palette", () => {
@@ -83,6 +83,17 @@ describe("drawing preferences", () => {
 
   it("starts highlighters at the minimum height", () => {
     expect(DEFAULT_DRAWING_PREFERENCES.highlighter.width).toBe(HIGHLIGHTER_WIDTH_MIN);
+  });
+
+  it("uses the pen thickness range for shapes and normalizes saved preferences", () => {
+    expect(clampShapeWidth(1)).toBe(INK_WIDTH_MIN);
+    expect(clampShapeWidth(30)).toBe(INK_WIDTH_MAX);
+    expect(clampShapeWidth(90)).toBe(INK_WIDTH_MAX);
+    const stored = JSON.stringify({
+      ...DEFAULT_DRAWING_PREFERENCES,
+      shape: { ...DEFAULT_DRAWING_PREFERENCES.shape, strokeWidth: 1 },
+    });
+    expect(loadDrawingPreferences({ getItem: () => stored }).shape.strokeWidth).toBe(2);
   });
 
   it("moves highlighter heights in two-pixel increments", () => {

@@ -360,6 +360,7 @@ function SpatialCanvasImpl(
   readOnlyRef.current = readOnly;
   const markdownImportRef = useRef<HTMLInputElement>(null);
   const shapeMenuRef = useRef<HTMLDetailsElement>(null);
+  const shapeOpacityMenuRef = useRef<HTMLDetailsElement>(null);
   const miscellaneousMenuRef = useRef<HTMLDetailsElement>(null);
   const markdownStyleMenuRef = useRef<HTMLDetailsElement>(null);
   const internalMarkdownSearchInputRef = useRef<HTMLInputElement>(null);
@@ -2644,6 +2645,8 @@ function SpatialCanvasImpl(
   useEffect(() => {
     const shapeMenu = shapeMenuRef.current;
     if (shapeMenu !== null) closeAnimatedMenu(shapeMenu);
+    const shapeOpacityMenu = shapeOpacityMenuRef.current;
+    if (shapeOpacityMenu !== null) closeAnimatedMenu(shapeOpacityMenu);
     const miscellaneousMenu = miscellaneousMenuRef.current;
     if (miscellaneousMenu !== null) closeAnimatedMenu(miscellaneousMenu);
     const markdownStyleMenu = markdownStyleMenuRef.current;
@@ -2656,6 +2659,7 @@ function SpatialCanvasImpl(
   useEffect(() => {
     const dismissCanvasMenus = (event: Event) => {
       dismissAnimatedMenuFromInteraction(shapeMenuRef.current, event.target);
+      dismissAnimatedMenuFromInteraction(shapeOpacityMenuRef.current, event.target);
       dismissAnimatedMenuFromInteraction(miscellaneousMenuRef.current, event.target);
       dismissAnimatedMenuFromInteraction(markdownStyleMenuRef.current, event.target);
       for (const paletteMenu of Object.values(paletteEditorMenuRefs.current)) {
@@ -3521,6 +3525,7 @@ function SpatialCanvasImpl(
           hasClipboard={canvasSession.clipboard !== undefined}
           selectedCount={effectiveSelectedIds.size}
           shapeMenuRef={shapeMenuRef}
+          shapeOpacityMenuRef={shapeOpacityMenuRef}
           miscellaneousMenuRef={miscellaneousMenuRef}
           markdownStyleMenuRef={markdownStyleMenuRef}
           paletteEditorMenuRefs={paletteEditorMenuRefs}

@@ -160,7 +160,7 @@ describe("hold-to-shape gesture", () => {
     expect(gesture.recognized).toBe(true);
   });
 
-  it("maps thick pen strokes to the existing shape width limit", () => {
+  it("preserves thick pen widths when converting strokes to shapes", () => {
     const preview = vi.fn();
     const gesture = new InkShapeGesture(preview);
     gesture.begin(
@@ -170,6 +170,6 @@ describe("hold-to-shape gesture", () => {
       1,
     );
     vi.advanceTimersByTime(INK_SHAPE_HOLD_MS);
-    expect(preview.mock.lastCall?.[0].style.strokeWidth).toBe(15);
+    expect(preview.mock.lastCall?.[0].style.strokeWidth).toBe(30);
   });
 });

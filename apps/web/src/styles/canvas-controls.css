@@ -247,6 +247,7 @@
   right: var(--ui-space-2);
 }
 .canvas-miscellaneous-menu .canvas-tool-menu__content,
+.canvas-opacity-menu .canvas-tool-menu__content,
 .canvas-shape-menu .canvas-tool-menu__content {
   min-width: 13rem;
   border-color: color-mix(in srgb, var(--app-accent) 24%, var(--app-border));
@@ -256,6 +257,7 @@
   backdrop-filter: var(--app-frosted-backdrop);
 }
 .canvas-miscellaneous-menu .canvas-tool-menu__content button,
+.canvas-opacity-menu .canvas-tool-menu__content button,
 .canvas-shape-menu .canvas-tool-menu__content button {
   display: flex;
   align-items: center;
@@ -386,9 +388,17 @@
   min-width: 6.5rem;
 }
 .canvas-toolbar.is-fullscreen .canvas-miscellaneous-menu .canvas-tool-menu__content,
+.canvas-toolbar.is-fullscreen .canvas-opacity-menu .canvas-tool-menu__content,
 .canvas-toolbar.is-fullscreen .canvas-shape-menu .canvas-tool-menu__content {
   width: 13rem;
   min-width: 13rem;
+}
+.canvas-opacity-menu .canvas-tool-menu__content {
+  position: fixed;
+  top: var(--canvas-tool-menu-top);
+  right: auto;
+  left: var(--canvas-tool-menu-left);
+  width: 13rem;
 }
 [data-animated-menu] {
   --menu-origin-x: 0px;

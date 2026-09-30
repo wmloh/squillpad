@@ -760,7 +760,7 @@ describe("App", () => {
           elements={[]}
         />,
       );
-      expect(shape).not.toContain('aria-label="Shape stroke width"');
+      expect(shape).not.toContain('aria-label="Shape thickness"');
     } finally {
       if (previous === null) localStorage.removeItem(DRAWING_PREFERENCES_KEY);
       else localStorage.setItem(DRAWING_PREFERENCES_KEY, previous);

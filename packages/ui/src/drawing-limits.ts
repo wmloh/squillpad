@@ -1,11 +1,11 @@
-/** Minimum width for shape outlines. */
-export const DRAWING_WIDTH_MIN = 1;
-
 /** Minimum width for pen strokes. */
 export const PEN_WIDTH_MIN = 2;
 
 /** Maximum width for pen strokes. */
 export const PEN_WIDTH_MAX = 30;
+
+/** Minimum width for shape outlines, matching pen strokes. */
+export const DRAWING_WIDTH_MIN = PEN_WIDTH_MIN;
 
 /** Width range and slider step for highlighter strokes. */
 export const HIGHLIGHTER_WIDTH_MIN = 10;
@@ -13,7 +13,7 @@ export const HIGHLIGHTER_WIDTH_MAX = 40;
 export const HIGHLIGHTER_WIDTH_STEP = 2;
 
 /** Maximum width for semantic shape outlines. */
-export const SHAPE_WIDTH_MAX = 15;
+export const SHAPE_WIDTH_MAX = PEN_WIDTH_MAX;
 
 /** Clamps an ink width to the limit for its drawing tool. */
 export function clampInkWidth(value: number, highlighter: boolean): number {
